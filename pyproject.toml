@@ -12,4 +12,5 @@ dependencies = [
     "pyjwt>=2.12.1",
     "sqlmodel>=0.0.38",
     "svix>=1.93.0",
+    "wonderwords>=3.0.1",
 ]
