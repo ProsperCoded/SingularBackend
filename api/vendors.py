@@ -1,3 +1,4 @@
+from fastapi import Query
 import random
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
@@ -59,3 +60,26 @@ async def generate_vendor_id(
         generated_id = f"{adj}-{noun}-{random_suffix}".lower()
 
     return {"generated_id": generated_id}
+
+
+@router.get("/check-id")
+async def check_vendor_id(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+    id: str = Query(..., description="The Vendor ID to check"),
+):
+
+    if current_user.role != UserRole.VENDOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Vendor accounts can check Vendor IDs.",
+        )
+
+    get_user_with_id_statement = select(User.id).where(User.vendor_id == id)
+    result = await session.exec(get_user_with_id_statement)
+    existing_user = result.first()
+
+    if existing_user:
+        return {"available": False}
+
+    return {"available": True}
