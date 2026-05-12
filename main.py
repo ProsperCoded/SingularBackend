@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter
 from api.webhooks import router as webhooks_router
+from api.vendors import router as vendors_router
 
 app = FastAPI()
 
@@ -12,5 +13,6 @@ def hello():
 
 
 api_router.include_router(webhooks_router)
+api_router.include_router(vendors_router)
 
 app.include_router(api_router)

@@ -1,13 +1,13 @@
+from schemas.schemas import ConfirmVendorId
+from core.database import get_db_session
 from fastapi import Query
 import random
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from wonderwords import RandomWord
-from core.database import get_session
 from core.auth import get_current_user
 from models.user import User, UserRole
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
 LOCATIONS = ["lagos", "abuja", "kano", "phc", "ibadan", "enugu"]
@@ -17,7 +17,7 @@ word_generator = RandomWord()
 @router.get("/generate-id")
 async def generate_vendor_id(
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ):
     # Enforce role-based access
     if current_user.role != UserRole.VENDOR:
@@ -66,7 +66,7 @@ async def generate_vendor_id(
 @router.get("/check-id")
 async def check_vendor_id(
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
     id: str = Query(..., description="The Vendor ID to check"),
 ):
 
@@ -86,15 +86,11 @@ async def check_vendor_id(
     return {"available": True}
 
 
-class ConfirmVendorId(BaseModel):
-    vendor_id: str
-
-
 @router.post("/confirm-id")
 async def confirm_vendor_id(
     payload: ConfirmVendorId,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ):
 
     if current_user.role != UserRole.VENDOR:

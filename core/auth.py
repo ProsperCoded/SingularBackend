@@ -1,3 +1,4 @@
+from core.database import get_db_session
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -6,7 +7,6 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.config import settings
-from core.database import get_session
 from models.user import User
 
 # This tells FastAPI to look for the "Authorization: Bearer <token>" header
@@ -19,7 +19,7 @@ jwks_client = PyJWKClient(jwks_url)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ) -> User:
     """
     Get the current user from the database based on the JWT token.
