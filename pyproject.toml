@@ -9,4 +9,5 @@ dependencies = [
     "fastapi[standard]>=0.136.1",
     "pydantic-settings>=2.14.1",
     "sqlmodel>=0.0.38",
+    "svix>=1.93.0",
 ]
