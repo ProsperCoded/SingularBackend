@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     CLERK_WEBHOOK_SECRET: str
+    CLERK_FRONTEND_API_URL: str
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
