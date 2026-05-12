@@ -38,6 +38,18 @@ class ScanStats(BaseModel):
     suspicious_scans: int
 
 
+class VendorTrustInfo(BaseModel):
+    vendor_id: str
+    trust_score: float = Field(..., description="Score out of 100")
+    badge_tier: str = Field(..., description="Bronze, Silver, or Gold")
+
+
+class ProductDetails(BaseModel):
+    product_name: str
+    manufacturer: str
+    product_type: str
+
+
 class ScanResultResponse(BaseModel):
     verdict: str = Field(..., description="'AUTHENTIC', 'SUSPICIOUS', or 'FAKE'")
     score: float = Field(..., description="Cosine similarity score from the engine")
@@ -54,18 +66,6 @@ class VendorDashboardResponse(BaseModel):
     badge_tier: str
     score_trend: str = Field(..., description="e.g., 'up', 'down', 'stable'")
     stats: ScanStats
-
-
-class VendorTrustInfo(BaseModel):
-    vendor_id: str
-    trust_score: float = Field(..., description="Score out of 100")
-    badge_tier: str = Field(..., description="Bronze, Silver, or Gold")
-
-
-class ProductDetails(BaseModel):
-    product_name: str
-    manufacturer: str
-    product_type: str
 
 
 class ConfirmVendorId(BaseModel):
