@@ -1,4 +1,9 @@
-from schemas.schemas import ConfirmVendorId
+from schemas.schemas import (
+    GenerateVendorIdResponse,
+    CheckVendorIdResponse,
+    ConfirmVendorIdResponse,
+    ConfirmVendorId,
+)
 from core.database import get_db_session
 from fastapi import Query
 import random
@@ -14,7 +19,7 @@ LOCATIONS = ["lagos", "abuja", "kano", "phc", "ibadan", "enugu"]
 word_generator = RandomWord()
 
 
-@router.get("/generate-id")
+@router.get("/generate-id", response_model=GenerateVendorIdResponse)
 async def generate_vendor_id(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
@@ -63,7 +68,7 @@ async def generate_vendor_id(
     return {"generated_id": generated_id}
 
 
-@router.get("/check-id")
+@router.get("/check-id", response_model=CheckVendorIdResponse)
 async def check_vendor_id(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
@@ -86,7 +91,7 @@ async def check_vendor_id(
     return {"available": True}
 
 
-@router.post("/confirm-id")
+@router.post("/confirm-id", response_model=ConfirmVendorIdResponse)
 async def confirm_vendor_id(
     payload: ConfirmVendorId,
     current_user: User = Depends(get_current_user),

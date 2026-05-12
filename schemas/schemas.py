@@ -3,6 +3,19 @@ from typing import Optional
 from pydantic import Field, BaseModel
 
 
+class GenerateVendorIdResponse(BaseModel):
+    generated_id: str
+
+
+class CheckVendorIdResponse(BaseModel):
+    available: bool
+
+
+class ConfirmVendorIdResponse(BaseModel):
+    message: str
+    vendor_id: str
+
+
 class BatchItemResponse(BaseModel):
     batch_id: str
     date_generated: datetime
