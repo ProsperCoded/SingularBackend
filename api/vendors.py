@@ -7,6 +7,7 @@ from wonderwords import RandomWord
 from core.database import get_session
 from core.auth import get_current_user
 from models.user import User, UserRole
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
 LOCATIONS = ["lagos", "abuja", "kano", "phc", "ibadan", "enugu"]
@@ -83,3 +84,48 @@ async def check_vendor_id(
         return {"available": False}
 
     return {"available": True}
+
+
+class ConfirmVendorId(BaseModel):
+    vendor_id: str
+
+
+@router.post("/confirm-id")
+async def confirm_vendor_id(
+    payload: ConfirmVendorId,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+
+    if current_user.role != UserRole.VENDOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Vendor accounts can confirm Vendor IDs.",
+        )
+
+    # Prevent overwriting an existing ID
+    if getattr(current_user, "vendor_id", None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You have already confirmed a Vendor ID.",
+        )
+
+    get_vendor_with_id_statement = select(User.id).where(User.vendor_id == id)
+    result = await session.exec(get_vendor_with_id_statement)
+    existing_vendor = result.first()
+
+    if existing_vendor:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vendor ID already taken.",
+        )
+
+    current_user.vendor_id = payload.vendor_id
+    session.add(current_user)
+    await session.commit()
+    await session.refresh(current_user)
+
+    return {
+        "message": "Vendor ID confirmed successfully",
+        "vendor_id": current_user.vendor_id,
+    }
