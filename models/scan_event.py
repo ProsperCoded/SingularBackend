@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from datetime import datetime, timezone
+from datetime import datetime
 import uuid
 
 
@@ -22,4 +22,5 @@ class ScanEvent(SQLModel, table=True):
     device_hash: str | None = Field(
         default=None, description="Browser fingerprint for anonymous tracking"
     )
-    scanned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    scanned_at: datetime = Field(default_factory=datetime.utcnow)
+

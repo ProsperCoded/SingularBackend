@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 class Product(SQLModel, table=True):
@@ -15,4 +15,5 @@ class Product(SQLModel, table=True):
     product_type: str = Field(description="Copied from Batch for quick access")
     vendor_id: str | None = Field(default=None, description="Copied from Batch")
     brand_id: str = Field(description="Copied from Batch for quick access")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
