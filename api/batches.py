@@ -1,21 +1,19 @@
 from services.dummy_engine import engine
 from core.storage import upload_multiple_batch_files
 import uuid
-import io
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
 from core.auth import get_current_user
-from core.database import get_session
+from core.database import get_db_session
 from core.payment import verify_squad_transaction
-from core.storage import upload_batch_pdf
 
 from models.user import User, UserRole
 from models.batch import Batch
 from schemas.batch import BatchGenerateRequest, BatchResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/batch", tags=["Batches"])
 
 COST_PER_TAG_KOBO = 150  # 1.5 Naira
 
@@ -24,7 +22,7 @@ COST_PER_TAG_KOBO = 150  # 1.5 Naira
 async def generate_batch(
     request: BatchGenerateRequest,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ):
     if current_user.role != UserRole.BRAND:
         raise HTTPException(status_code=403, detail="Only Brands can generate tags.")
