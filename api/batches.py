@@ -1,7 +1,7 @@
 from services.dummy_engine import engine
 from core.storage import upload_multiple_batch_files
 import uuid
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
@@ -107,7 +107,7 @@ async def list_batches(
     results = await session.exec(statement)
     batches = results.all()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     items = []
 
     for batch in batches:

@@ -1,9 +1,8 @@
 from models.user import User
 from models.user import UserRole
 from core.config import settings
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, Request, APIRouter
+from fastapi import Depends, HTTPException, Request, APIRouter
+from sqlmodel.ext.asyncio.session import AsyncSession
 from core.database import get_db_session
 from svix.webhooks import Webhook, WebhookVerificationError
 

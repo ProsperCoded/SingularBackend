@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File, status
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.database import get_db_session
@@ -7,6 +8,7 @@ from services.trust import compute_trust_score
 
 from models.product import Product
 from models.scan_event import ScanEvent
+from models.user import User
 
 from schemas.scan import ScanResultResponse, ProductDetails, VendorLookupResponse
 from schemas.vendor import VendorTrustInfo, ScanStats
@@ -98,9 +100,6 @@ async def verify_vendor(
     Vendor trust score lookup for vendor-QR scans.
     Public endpoint, no auth required.
     """
-
-    from sqlmodel import select
-    from models.user import User
 
     # Look up the vendor's user record
     statement = select(User).where(User.vendor_id == vendor_id)

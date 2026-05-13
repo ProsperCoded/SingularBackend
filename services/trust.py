@@ -1,6 +1,6 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
-
+from datetime import datetime, timedelta
 from models.scan_event import ScanEvent
 
 
@@ -62,9 +62,8 @@ async def compute_score_trend(session: AsyncSession, vendor_id: str) -> str:
     Compare the trust score over the last 7 days vs the previous 7 days.
     Returns 'up', 'down', or 'stable'.
     """
-    from datetime import datetime, timedelta, timezone
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     seven_days_ago = now - timedelta(days=7)
     fourteen_days_ago = now - timedelta(days=14)
 

@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, JSON
-from datetime import datetime, timezone
+from datetime import datetime
 import uuid
 
 class Batch(SQLModel, table=True):
@@ -11,4 +11,4 @@ class Batch(SQLModel, table=True):
     quantity: int
     transaction_ref: str = Field(unique=True)
     download_urls: list[str] = Field(default_factory=list, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
