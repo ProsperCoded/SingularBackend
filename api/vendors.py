@@ -3,7 +3,10 @@ from schemas.vendor import (
     CheckVendorIdResponse,
     ConfirmVendorIdResponse,
     ConfirmVendorId,
+    VendorDashboardResponse,
+    ScanStats,
 )
+from services.trust import compute_trust_score, compute_score_trend
 from core.database import get_db_session
 from fastapi import Query
 import random
@@ -130,3 +133,39 @@ async def confirm_vendor_id(
         "message": "Vendor ID confirmed successfully",
         "vendor_id": current_user.vendor_id,
     }
+
+
+@router.get("/dashboard", response_model=VendorDashboardResponse)
+async def get_vendor_dashboard(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Trust score dashboard for the authenticated vendor.
+    Returns their score, badge tier, trend, and scan stats.
+    """
+
+    if current_user.role != UserRole.VENDOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Vendor accounts can view the vendor dashboard.",
+        )
+
+    if not current_user.vendor_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="You have not confirmed a Vendor ID yet.",
+        )
+
+    vendor_id = current_user.vendor_id
+
+    trust_score, badge_tier, stats = await compute_trust_score(session, vendor_id)
+    score_trend = await compute_score_trend(session, vendor_id)
+
+    return VendorDashboardResponse(
+        vendor_id=vendor_id,
+        trust_score=trust_score,
+        badge_tier=badge_tier,
+        score_trend=score_trend,
+        stats=ScanStats(**stats),
+    )
