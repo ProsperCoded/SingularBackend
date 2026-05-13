@@ -31,6 +31,11 @@ async def generate_batch(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """
+    Generate a new batch of PUF tags.
+    Verifies the Squad payment transaction before triggering the Core Engine
+    to generate the printable PDF assets.
+    """
     if current_user.role != UserRole.BRAND:
         raise HTTPException(status_code=403, detail="Only Brands can generate tags.")
 

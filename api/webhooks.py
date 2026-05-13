@@ -13,8 +13,7 @@ router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 @router.post("/clerk", response_model=WebhookResponse)
 async def webhook(request: Request, session: AsyncSession = Depends(get_db_session)):
     """
-    Handle webhook events from Clerk.
-    
+    Handle webhook events from Clerk (User creation and deletion).
     """
     payload = await request.json()
     headers = request.headers

@@ -27,6 +27,10 @@ async def generate_vendor_id(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """
+    Generate a unique Vendor ID for a new vendor account.
+    Returns a candidate ID (e.g., 'swift-mango-lagos') that the vendor can review before confirming.
+    """
     # Enforce role-based access
     if current_user.role != UserRole.VENDOR:
         raise HTTPException(
@@ -77,6 +81,10 @@ async def check_vendor_id(
     session: AsyncSession = Depends(get_db_session),
     id: str = Query(..., description="The Vendor ID to check"),
 ):
+    """
+    Check if a specific Vendor ID is available.
+    Returns `available: True` if no other vendor has claimed it.
+    """
 
     if current_user.role != UserRole.VENDOR:
         raise HTTPException(
@@ -100,6 +108,10 @@ async def confirm_vendor_id(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """
+    Confirm and claim a Vendor ID.
+    Once claimed, this ID becomes the vendor's permanent identifier.
+    """
 
     if current_user.role != UserRole.VENDOR:
         raise HTTPException(
