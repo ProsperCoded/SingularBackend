@@ -4,19 +4,25 @@ These are not meant for production use.
 """
 
 from fastapi import APIRouter
-from schemas.schemas import (
+from schemas.vendor import (
     GenerateVendorIdResponse,
     CheckVendorIdResponse,
     ConfirmVendorIdResponse,
     ConfirmVendorId,
-    BatchItemResponse,
-    BrandBatchesResponse,
     ScanStats,
-    ScanResultResponse,
     VendorDashboardResponse,
     VendorTrustInfo,
-    ProductDetails,
     VendorPerformance,
+)
+from schemas.scan import (
+    ScanResultResponse,
+    ProductDetails,
+)
+from schemas.batch import (
+    BatchItemResponse,
+    BrandBatchesResponse,
+)
+from schemas.analytics import (
     BrandAnalyticsResponse,
 )
 

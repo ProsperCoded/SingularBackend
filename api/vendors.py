@@ -1,4 +1,4 @@
-from schemas.schemas import (
+from schemas.vendor import (
     GenerateVendorIdResponse,
     CheckVendorIdResponse,
     ConfirmVendorIdResponse,
