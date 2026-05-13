@@ -1,6 +1,7 @@
 from services.dummy_engine import engine
 from core.storage import upload_multiple_batch_files
 import uuid
+from datetime import timedelta, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
@@ -11,11 +12,17 @@ from core.payment import verify_squad_transaction
 
 from models.user import User, UserRole
 from models.batch import Batch
-from schemas.batch import BatchGenerateRequest, BatchResponse
+from schemas.batch import (
+    BatchGenerateRequest,
+    BatchResponse,
+    BatchItemResponse,
+    BrandBatchesResponse,
+)
 
 router = APIRouter(prefix="/batch", tags=["Batches"])
 
 COST_PER_TAG_KOBO = 150  # 1.5 Naira
+BATCH_EXPIRY_DAYS = 30
 
 
 @router.post("/generate", response_model=BatchResponse)
@@ -77,3 +84,50 @@ async def generate_batch(
     await session.refresh(new_batch)
 
     return new_batch
+
+
+@router.get("/list", response_model=BrandBatchesResponse)
+async def list_batches(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    List all batches for the authenticated brand.
+    Each batch includes a 30-day expiry window and active status.
+    """
+
+    if current_user.role != UserRole.BRAND:
+        raise HTTPException(status_code=403, detail="Only Brands can view batches.")
+
+    statement = (
+        select(Batch)
+        .where(Batch.brand_id == current_user.id)
+        .order_by(Batch.created_at.desc())
+    )
+    results = await session.exec(statement)
+    batches = results.all()
+
+    now = datetime.now(timezone.utc)
+    items = []
+
+    for batch in batches:
+        expires_at = batch.created_at + timedelta(days=BATCH_EXPIRY_DAYS)
+        is_active = now < expires_at
+
+        # Use the first download URL as the primary link
+        download_url = batch.download_urls[0] if batch.download_urls else ""
+
+        items.append(
+            BatchItemResponse(
+                batch_id=batch.id,
+                date_generated=batch.created_at,
+                quantity=batch.quantity,
+                product_type=batch.product_type,
+                vendor_id=batch.vendor_id,
+                download_url=download_url,
+                expires_at=expires_at,
+                is_active=is_active,
+            )
+        )
+
+    return BrandBatchesResponse(batches=items)
