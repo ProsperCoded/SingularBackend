@@ -111,7 +111,7 @@ async def confirm_vendor_id(
             detail="You have already confirmed a Vendor ID.",
         )
 
-    get_vendor_with_id_statement = select(User.id).where(User.vendor_id == id)
+    get_vendor_with_id_statement = select(User.id).where(User.vendor_id == payload.vendor_id)
     result = await session.exec(get_vendor_with_id_statement)
     existing_vendor = result.first()
 
