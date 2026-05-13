@@ -1,3 +1,4 @@
+from schemas.webhook import WebhookResponse
 from models.user import User
 from models.user import UserRole
 from core.config import settings
@@ -6,11 +7,15 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from core.database import get_db_session
 from svix.webhooks import Webhook, WebhookVerificationError
 
-router = APIRouter(prefix="/webhooks")
+router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 
-@router.post("/clerk")
+@router.post("/clerk", response_model=WebhookResponse)
 async def webhook(request: Request, session: AsyncSession = Depends(get_db_session)):
+    """
+    Handle webhook events from Clerk.
+    
+    """
     payload = await request.json()
     headers = request.headers
 
