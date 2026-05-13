@@ -94,3 +94,67 @@ async def get_brand_analytics(
         fake_attempts=fake,
         vendor_management=vendor_management,
     )
+
+
+@router.get("/vendors", response_model=list[VendorPerformance])
+async def get_vendor_management(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Vendor management data for the authenticated brand.
+    Lists all vendors assigned to this brand with their authentic scan ratio.
+    """
+
+    if current_user.role != UserRole.BRAND:
+        raise HTTPException(status_code=403, detail="Only Brands can view vendor management.")
+
+    # Get distinct vendor IDs from this brand's products
+    vendor_ids_stmt = (
+        select(Product.vendor_id)
+        .where(Product.brand_id == current_user.id, Product.vendor_id.isnot(None))
+        .distinct()
+    )
+    vendor_ids_result = await session.exec(vendor_ids_stmt)
+    vendor_ids = vendor_ids_result.all()
+
+    if not vendor_ids:
+        return []
+
+    # Get all product IDs for this brand (needed to scope scan events)
+    product_ids_stmt = select(Product.id).where(Product.brand_id == current_user.id)
+    product_ids_result = await session.exec(product_ids_stmt)
+    product_ids = product_ids_result.all()
+
+    # Aggregate scans per vendor
+    vendor_stats_stmt = (
+        select(
+            ScanEvent.vendor_id,
+            ScanEvent.verdict,
+            func.count(ScanEvent.id),
+        )
+        .where(
+            col(ScanEvent.product_id).in_(product_ids),
+            col(ScanEvent.vendor_id).in_(vendor_ids),
+        )
+        .group_by(ScanEvent.vendor_id, ScanEvent.verdict)
+    )
+    vendor_stats_result = await session.exec(vendor_stats_stmt)
+
+    vendor_data: dict[str, dict[str, int]] = {}
+    for vendor_id, verdict, count in vendor_stats_result.all():
+        if vendor_id not in vendor_data:
+            vendor_data[vendor_id] = {}
+        vendor_data[vendor_id][verdict] = count
+
+    results = []
+    for vendor_id in vendor_ids:
+        verdicts = vendor_data.get(vendor_id, {})
+        v_authentic = verdicts.get("AUTHENTIC", 0)
+        v_total = sum(verdicts.values())
+        ratio = round(v_authentic / v_total, 4) if v_total > 0 else 0.0
+        results.append(
+            VendorPerformance(vendor_id=vendor_id, authentic_ratio=ratio)
+        )
+
+    return results
