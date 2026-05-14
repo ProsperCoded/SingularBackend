@@ -1,7 +1,9 @@
-import io
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from collections.abc import Mapping, Sequence
+from typing import Optional
 from pydantic import BaseModel
+
+from services.engine.pipeline import DEFAULT_ENROLMENT_SCAN_COUNT, EnrolResult, GenerateResult, ImageSource
 
 
 class VerificationResult(BaseModel):
@@ -20,37 +22,59 @@ class PUFEngineInterface(ABC):
     """
 
     @abstractmethod
-    async def generate_batch(
-        self, quantity: int, product_type: str, vendor_id: Optional[str] = None
-    ) -> List[io.BytesIO]:
+    async def generate_tag(
+        self, product_id: str, vendor_id: Optional[str] = None
+    ) -> GenerateResult:
         """
-        Triggers the enrolment pipeline to generate a batch of PUF tags.
+        Triggers the generation pipeline to create a printable PUF tag.
 
         Args:
-            quantity: The number of unique tags to generate.
-            product_type: The category of the product (e.g., 'Sneakers').
-            vendor_id: The optional vendor assigned to this batch.
+            product_id: The product ID encoded in the QR payload.
+            vendor_id: The optional vendor assigned to this tag.
 
         Returns:
-            A list of in-memory byte streams representing the generated A4 pages
-            (PDFs or SVGs), ready for the Backbone to upload to DigitalOcean Spaces.
+            A GenerateResult containing the QR PNG bytes.
+        """
+        pass
+
+    @abstractmethod
+    async def enrol_tag(
+        self,
+        image_source: ImageSource | Sequence[ImageSource],
+        product_id: str,
+        vendor_id: Optional[str] = None,
+        required_scan_count: int = DEFAULT_ENROLMENT_SCAN_COUNT,
+    ) -> EnrolResult:
+        """
+        Triggers the enrolment pipeline for a single tag.
+
+        Args:
+            image_source: One or more images captured from the printed tag.
+            product_id: The product ID encoded in the QR payload.
+            vendor_id: The optional vendor assigned to this tag.
+            required_scan_count: The minimum number of scans used for enrolment.
+
+        Returns:
+            An EnrolResult containing the averaged enrolment bundle.
         """
         pass
 
     @abstractmethod
     async def verify_tag(
-        self, image_bytes: bytes, product_id: str
+        self,
+        image_bytes: bytes,
+        product_id: str,
+        enrolment_bundle: Mapping[str, object] | None = None,
     ) -> VerificationResult:
         """
         Runs the verification pipeline on a captured image.
-        This method is responsible for running pHash, LBP, SIFT, and MobileNetV2,
-        and querying the pgvector database.
 
         Args:
             image_bytes: The raw bytes of the 1200x1200px JPEG captured by the frontend.
             product_id: The decoded product ID extracted from the QR payload.
+            enrolment_bundle: The persisted bundle for this tag, if available.
 
         Returns:
-            A VerificationResult containing the cosine similarity score and the final verdict.
+            A VerificationResult containing the cosine similarity score and the final backend verdict.
         """
         pass

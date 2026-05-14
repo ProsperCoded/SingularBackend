@@ -5,9 +5,9 @@ import uuid
 
 class ScanEvent(SQLModel, table=True):
     """
-    Logs every consumer scan for analytics, trust score computation,
+    Append-only log of every consumer scan for analytics, trust score computation,
     and brand dashboard reporting. Consumer scans are anonymous —
-    no user account is linked.
+    no user account is linked, and verification never deletes the underlying tag.
     """
 
     __tablename__ = "scanevent"
@@ -23,4 +23,3 @@ class ScanEvent(SQLModel, table=True):
         default=None, description="Browser fingerprint for anonymous tracking"
     )
     scanned_at: datetime = Field(default_factory=datetime.utcnow)
-
