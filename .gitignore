@@ -175,4 +175,4 @@ artifacts/
 test_images/
 .torch-cache
 
-AGENT.md
+AGENTS.md
