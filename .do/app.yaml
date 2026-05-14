@@ -1,0 +1,15 @@
+name: printpuf-api
+services:
+  - name: web
+    source_dir: /
+    dockerfile_path: Dockerfile
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+    routes:
+      - path: /
+    envs:
+      - key: PORT
+        value: "8080"
+      - key: PYTHONUNBUFFERED
+        value: "1"
