@@ -20,5 +20,3 @@ qrcode[pil]>=7.4.2
 cryptography>=42.0.0
 cbor2>=5.6.0
 python-dotenv>=1.0.0
-pytest>=8.0.0
-pytest-cov

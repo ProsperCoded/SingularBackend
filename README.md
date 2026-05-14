@@ -31,12 +31,9 @@ The PrintPUF system is divided into three main components:
 
 ## Setup & Local Development
 
-This project uses `uv`, an extremely fast Python package and project manager written in Rust.
-
 ### Prerequisites
 
 - Python 3.10 or higher
-- [uv](https://github.com/astral-sh/uv) installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - PostgreSQL database
 
 ### Installation & Running Locally
@@ -48,11 +45,12 @@ This project uses `uv`, an extremely fast Python package and project manager wri
    cd PrintPUF
    ```
 
-2. **Sync the project dependencies and create the virtual environment:**
-   Using `uv`, this step will automatically create the `.venv` and install the exact dependencies from `uv.lock`.
+2. **Create the virtual environment and install the dependencies:**
 
    ```bash
-   uv sync
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
    ```
 
 3. **Configure Environment Variables:**
@@ -69,9 +67,8 @@ This project uses `uv`, an extremely fast Python package and project manager wri
    ```
 
 4. **Run the Development Server:**
-   You can use `uv run` to execute FastAPI directly within the managed environment.
    ```bash
-   uv run fastapi dev --host 127.0.0.1 --port 8000
+   fastapi dev --host 127.0.0.1 --port 8000
    ```
 
 ### API Documentation
@@ -99,11 +96,11 @@ The current implementation guide defines 9 stages:
 
 ## Setup
 
-Use the project virtual environment and install dependencies with `uv`:
+Use the project virtual environment and install dependencies with `pip`:
 
 ```bash
 source .venv/bin/activate
-uv pip install --python .venv/bin/python -r requirements.txt
+pip install -r requirements.txt
 ```
 
 The engine reads Ed25519 key material from environment variables. The canonical names are `PRINTPUF_ED25519_PRIVATE_KEY_PEM` and `PRINTPUF_ED25519_PUBLIC_KEY_PEM`. The shorter `PRINTPUF_PRIVATE_KEY_PEM` and `PRINTPUF_PUBLIC_KEY_PEM` aliases are also accepted.
