@@ -176,3 +176,5 @@ test_images/
 .torch-cache
 
 AGENTS.md
+
+certs/

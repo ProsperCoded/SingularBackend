@@ -1,17 +1,14 @@
 from fastapi import FastAPI, APIRouter, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 from api.auth import router as auth_router
 from api.vendors import router as vendors_router
 from api.tags import router as tags_router
 from api.verify import router as verify_router
 from api.analytics import router as analytics_router
-
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://printpuf-8adgz.ondigitalocean.app",
-]
+from core.database import async_engine
+from core.schema import ensure_schema
 
 app = FastAPI(
     title="PrintPUF API",
@@ -20,7 +17,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,8 +26,7 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    origin = request.headers.get("origin", "")
-    cors_origin = origin if origin in ALLOWED_ORIGINS else ALLOWED_ORIGINS[0]
+    cors_origin = request.headers.get("origin", "*")
     return JSONResponse(
         status_code=500,
         content={"detail": f"Internal server error: {type(exc).__name__}: {str(exc)}"},
@@ -43,9 +39,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def on_startup():
-    import models.user  # noqa: F401 — ensures User table is registered
-    import models.product  # noqa: F401
-    import models.scan_event  # noqa: F401
+    await ensure_schema(async_engine)
 
 
 api_router = APIRouter(prefix="/api")

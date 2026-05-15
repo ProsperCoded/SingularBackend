@@ -56,7 +56,7 @@ The PrintPUF system is divided into three main components:
 3. **Configure Environment Variables:**
 
    ```env
-   DATABASE_URL="postgresql+asyncpg://user:pass@host/dbname?ssl=require"
+   DATABASE_URL="postgresql://user:pass@host:5432/dbname?sslmode=require"
    CLERK_WEBHOOK_SECRET="whsec_..."
    SQUAD_SECRET_KEY="sandbox_..."
    SQUAD_BASE_URL="https://sandbox-api-d.squadco.com"
@@ -65,6 +65,10 @@ The PrintPUF system is divided into three main components:
    DO_SPACES_ENDPOINT="..."
    DO_SPACES_BUCKET="..."
    ```
+
+   The backend automatically loads `backend/certs/ca-certificate.crt` for Postgres
+   connections when `sslmode` is enabled, so you do not need to wire the CA file
+   into the connection string manually.
 
 4. **Run the Development Server:**
    ```bash
