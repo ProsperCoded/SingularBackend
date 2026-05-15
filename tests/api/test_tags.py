@@ -211,6 +211,7 @@ def test_verify_tag_returns_backend_verdicts(monkeypatch: pytest.MonkeyPatch, ba
 
     assert response.status_code == 200
     body = response.json()
+    assert body["product_id"] == "product-1"
     assert body["verdict"] == backend_verdict
     assert body["score"] == 0.91
     assert body["report_url"] == report_url
@@ -226,4 +227,3 @@ def test_openapi_exposes_tag_routes_and_not_batch() -> None:
     assert "/api/tags/list" in paths
     assert "/api/tags/verify" in paths
     assert all(not path.startswith("/api/batch") for path in paths)
-

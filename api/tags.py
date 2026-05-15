@@ -3,6 +3,9 @@ from __future__ import annotations
 import base64
 import uuid
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
+
+import cbor2
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlmodel import select
@@ -30,6 +33,25 @@ REQUIRED_ENROLMENT_SCANS = 3
 
 def _encode_png_bytes(png_bytes: bytes) -> str:
     return base64.b64encode(png_bytes).decode("ascii")
+
+
+def _resolve_product_id(raw_value: str) -> str:
+    if not raw_value.startswith("printpuf://"):
+        return raw_value
+
+    parsed = urlparse(raw_value)
+    if parsed.scheme != "printpuf":
+        raise HTTPException(status_code=400, detail="Unsupported QR payload format.")
+
+    encoded_payload = parse_qs(parsed.query).get("data", [None])[0]
+    if not encoded_payload:
+        raise HTTPException(status_code=400, detail="QR payload is missing its signed data block.")
+
+    payload = cbor2.loads(base64.urlsafe_b64decode(encoded_payload.encode("ascii")))
+    product_id = payload.get("pid")
+    if not isinstance(product_id, str) or not product_id:
+        raise HTTPException(status_code=400, detail="QR payload does not contain a valid product id.")
+    return product_id
 
 
 @router.post("/generate", response_model=TagGenerateResponse)
@@ -172,16 +194,17 @@ async def verify_tag(
     session: AsyncSession = Depends(get_db_session),
 ):
     image_bytes = await image.read()
-    product_record = await session.get(Product, product_id)
+    resolved_product_id = _resolve_product_id(product_id)
+    product_record = await session.get(Product, resolved_product_id)
 
     if product_record and product_record.enrolment_bundle is not None:
         result = await engine.verify_tag(
             image_bytes=image_bytes,
-            product_id=product_id,
+            product_id=resolved_product_id,
             enrolment_bundle=product_record.enrolment_bundle,
         )
     else:
-        result = await engine.verify_tag(image_bytes=image_bytes, product_id=product_id, enrolment_bundle=None)
+        result = await engine.verify_tag(image_bytes=image_bytes, product_id=resolved_product_id, enrolment_bundle=None)
 
     product_details = None
     vendor_trust = None
@@ -207,11 +230,11 @@ async def verify_tag(
     if result.verdict == "FAKE":
         report_url = (
             f"https://wa.me/?text=FAKE%20product%20detected%20"
-            f"(ID%3A%20{product_id}).%20Report%20to%20NAFDAC."
+            f"(ID%3A%20{resolved_product_id}).%20Report%20to%20NAFDAC."
         )
 
     scan_event = ScanEvent(
-        product_id=product_id,
+        product_id=resolved_product_id,
         vendor_id=vendor_id,
         verdict=result.verdict,
         score=result.score,
@@ -221,10 +244,10 @@ async def verify_tag(
     await session.commit()
 
     return ScanResultResponse(
+        product_id=resolved_product_id,
         verdict=result.verdict,
         score=result.score,
         product=product_details,
         vendor=vendor_trust,
         report_url=report_url,
     )
-

@@ -1,65 +1,46 @@
-from core.database import get_db_session
+from __future__ import annotations
+
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jwt import PyJWKClient
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from core.config import settings
+from core.database import get_db_session
+from core.security import decode_access_token
 from models.user import User
 
-# This tells FastAPI to look for the "Authorization: Bearer <token>" header
-security = HTTPBearer()
 
-# Set up the JWKS client to fetch Clerk's public keys
-jwks_url = f"{settings.CLERK_FRONTEND_API_URL}/.well-known/jwks.json"
-jwks_client = PyJWKClient(jwks_url)
+security = HTTPBearer()
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     session: AsyncSession = Depends(get_db_session),
 ) -> User:
-    """
-    Get the current user from the database based on the JWT token.
-    Used to securing routes with @Depends(get_current_user)
-    """
-
     token = credentials.credentials
 
     try:
-        signing_key = jwks_client.get_signing_key_from_jwt(token)
-        payload = jwt.decode(token, signing_key.key, algorithms=["RS256"])
+        payload = decode_access_token(token)
         user_id = payload.get("sub")
-        if not user_id:
+        if not isinstance(user_id, str) or not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload: missing subject.",
+                detail="Invalid token payload.",
             )
-
     except HTTPException:
         raise
-    except Exception as e:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Could not validate credentials: {str(e)}",
+            detail="Could not validate credentials.",
         )
 
-    try:
-        statement = select(User).where(User.id == user_id)
-        result = await session.exec(statement)
-        user = result.first()
-    except Exception as db_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {type(db_err).__name__}: {str(db_err)}",
-        )
-
+    result = await session.exec(select(User).where(User.id == user_id))
+    user = result.first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found in database.",
+            detail="User not found.",
         )
-
     return user

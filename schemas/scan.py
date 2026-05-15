@@ -11,6 +11,7 @@ class ProductDetails(BaseModel):
 
 
 class ScanResultResponse(BaseModel):
+    product_id: str
     verdict: str = Field(..., description="'AUTHENTIC', 'SUSPICIOUS', or 'FAKE'")
     score: float = Field(..., description="Cosine similarity score from the engine")
     product: Optional[ProductDetails] = None

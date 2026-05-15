@@ -4,9 +4,8 @@ import os
 
 
 _DEFAULT_ENV = {
-    "DATABASE_URL": "postgresql+asyncpg://user:pass@localhost/printpuf_test",
-    "CLERK_WEBHOOK_SECRET": "test_webhook_secret",
-    "CLERK_FRONTEND_API_URL": "https://clerk.example.test",
+    "DATABASE_URL": "sqlite+aiosqlite:///./test_printpuf.db",
+    "JWT_SECRET_KEY": "test_jwt_secret",
     "SQUAD_SECRET_KEY": "test_squad_secret",
     "SQUAD_BASE_URL": "https://squad.example.test",
     "DO_SPACES_REGION": "fra1",
@@ -17,4 +16,3 @@ _DEFAULT_ENV = {
 
 for key, value in _DEFAULT_ENV.items():
     os.environ.setdefault(key, value)
-

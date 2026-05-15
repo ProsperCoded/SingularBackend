@@ -1,13 +1,11 @@
 from fastapi import FastAPI, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlmodel import SQLModel
-from api.webhooks import router as webhooks_router
+from api.auth import router as auth_router
 from api.vendors import router as vendors_router
 from api.tags import router as tags_router
 from api.verify import router as verify_router
 from api.analytics import router as analytics_router
-from core.database import async_engine
 
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -45,21 +43,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def on_startup():
-    from sqlalchemy import text
     import models.user  # noqa: F401 — ensures User table is registered
     import models.product  # noqa: F401
     import models.scan_event  # noqa: F401
-    async with async_engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-        # Add vendor_id column if the table already existed without it
-        await conn.execute(
-            text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS vendor_id VARCHAR UNIQUE')
-        )
 
 
 api_router = APIRouter(prefix="/api")
 
-api_router.include_router(webhooks_router)
+api_router.include_router(auth_router)
 api_router.include_router(vendors_router)
 api_router.include_router(tags_router)
 api_router.include_router(verify_router)
