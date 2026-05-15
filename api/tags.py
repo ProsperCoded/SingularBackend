@@ -14,11 +14,19 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from core.auth import get_current_user
 from core.database import get_db_session
 from core.payment import verify_squad_transaction
+from core.payment import initiate_squad_transaction
 from models.product import Product
 from models.scan_event import ScanEvent
 from models.user import User, UserRole
 from schemas.scan import ProductDetails, ScanResultResponse
-from schemas.tags import TagEnrolResponse, TagGenerateResponse, TagItemResponse, TagListResponse
+from schemas.tags import (
+    TagEnrolResponse,
+    TagGenerateResponse,
+    TagItemResponse,
+    TagListResponse,
+    TagPaymentInitiateRequest,
+    TagPaymentInitiateResponse,
+)
 from schemas.vendor import VendorTrustInfo
 from services.engine.bundle import serialize_enrolment_bundle
 from services.engine_adapter import engine
@@ -52,6 +60,28 @@ def _resolve_product_id(raw_value: str) -> str:
     if not isinstance(product_id, str) or not product_id:
         raise HTTPException(status_code=400, detail="QR payload does not contain a valid product id.")
     return product_id
+
+
+@router.post("/payment/initiate", response_model=TagPaymentInitiateResponse)
+async def initiate_tag_payment(
+    payload: TagPaymentInitiateRequest,
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != UserRole.BRAND:
+        raise HTTPException(status_code=403, detail="Only Brands can create tag payments.")
+
+    result = await initiate_squad_transaction(
+        email=current_user.email,
+        amount=COST_PER_TAG_KOBO,
+        customer_name=current_user.full_name or current_user.email,
+        metadata={
+            "purpose": "tag_generation",
+            "brand_id": current_user.id,
+            "product_type": payload.product_type,
+            "vendor_id": payload.vendor_id,
+        },
+    )
+    return TagPaymentInitiateResponse(**result)
 
 
 @router.post("/generate", response_model=TagGenerateResponse)

@@ -22,9 +22,11 @@ def reset_database() -> Iterator[None]:
         async with async_engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.drop_all)
         await ensure_schema(async_engine)
+        await async_engine.dispose()
 
     asyncio.run(_reset())
     yield
+    asyncio.run(async_engine.dispose())
 
 
 @pytest.fixture

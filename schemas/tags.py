@@ -44,3 +44,13 @@ class TagItemResponse(BaseModel):
 class TagListResponse(BaseModel):
     tags: list[TagItemResponse]
 
+
+class TagPaymentInitiateRequest(BaseModel):
+    product_type: str | None = None
+    vendor_id: str | None = None
+
+
+class TagPaymentInitiateResponse(BaseModel):
+    transaction_ref: str
+    checkout_url: str
+    amount: int
