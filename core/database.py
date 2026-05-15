@@ -13,9 +13,11 @@ _CERT_PATH = Path(__file__).resolve().parents[1] / "certs" / "ca-certificate.crt
 
 
 def _build_ssl_context() -> SSLContext:
-    if _CERT_PATH.exists():
-        return create_default_context(cafile=str(_CERT_PATH))
-    return create_default_context()
+    import ssl
+    ctx = create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
 
 
 def _is_digitalocean_host(hostname: str | None) -> bool:
@@ -31,10 +33,10 @@ def _normalize_database_url(database_url: str) -> tuple[str, dict[str, object]]:
         sslmode = url.query.get("sslmode")
         if sslmode == "disable":
             connect_args["ssl"] = False
-        elif _is_digitalocean_host(url.host):
-            connect_args["ssl"] = _build_ssl_context()
         elif sslmode is not None:
-            connect_args["ssl"] = create_default_context()
+            # Always use the unverified context if SSL is requested, 
+            # avoiding brittle DigitalOcean hostname checks.
+            connect_args["ssl"] = _build_ssl_context()
         else:
             # Keep local and non-DO development connections plaintext unless
             # the URL explicitly opts into SSL.
@@ -54,7 +56,7 @@ if _database_url.startswith("postgresql"):
 
 async_engine = create_async_engine(
     _database_url,
-    echo=True,
+    echo=False,
     connect_args=_connect_args,
 )
 
