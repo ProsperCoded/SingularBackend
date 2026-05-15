@@ -22,7 +22,7 @@ def test_mobilenet_model_is_singleton() -> None:
 
 
 def test_extract_mobilenet_returns_finite_embedding_for_generated_primary_region() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
     primary_region = preprocess_tag(png_bytes).primary_region
 
     embedding = extract_mobilenet(primary_region)

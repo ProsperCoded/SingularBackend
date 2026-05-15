@@ -225,7 +225,7 @@ def test_enrol_tag_returns_400_for_product_id_mismatch(monkeypatch: pytest.Monke
 
     async def _fake_enrol_tag(*, image_source, product_id: str, vendor_id: str | None = None, required_scan_count: int = 3):
         raise ValueError(
-            "enrolment image payload product_id 'product-123' does not match "
+            "enrolment image payload product_id 'product-test-1' does not match "
             "'0f6e5c55fa0c4e2bbb6cd1933d9cfe5a'"
         )
 

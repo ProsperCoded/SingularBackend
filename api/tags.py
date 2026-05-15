@@ -191,7 +191,7 @@ async def generate_tag(
             detail="This transaction reference has already been used to generate a tag.",
         )
 
-    await verify_squad_transaction(transaction_ref, COST_PER_TAG_KOBO)
+    await verify_squad_transaction(transaction_ref)
     normalized_vendor_id = await _require_vendor_id(session, vendor_id)
     print(
         "[tags] Generating tag "

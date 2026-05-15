@@ -26,7 +26,7 @@ def test_extract_sift_returns_zero_vector_for_blank_image() -> None:
 
 
 def test_extract_sift_returns_nonzero_vector_for_generated_primary_region() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
     primary_region = preprocess_tag(png_bytes).primary_region
 
     sift_vector = extract_sift(primary_region)

@@ -114,16 +114,16 @@ Activate the virtualenv, then use the manual test CLI directly:
 
 ```bash
 engine --help
-engine generate --product-id product-123 --vendor-id vendor-abc --output artifacts/manual/tag.png
+engine generate --product-id product-test-1 --vendor-id vendor-abc --output artifacts/manual/tag.png
 engine scan-qr --image artifacts/manual/tag.png
 engine enrol \
   --image artifacts/manual/scan1.png \
   --image artifacts/manual/scan2.png \
   --image artifacts/manual/scan3.png \
-  --product-id product-123 \
+  --product-id product-test-1 \
   --vendor-id vendor-abc \
-  --output-dir artifacts/manual/enrolments/product-123
-engine verify --bundle artifacts/manual/enrolments/product-123/enrolment.json --image artifacts/manual/tag.png
+  --output-dir artifacts/manual/enrolments/product-test-1
+engine verify --bundle artifacts/manual/enrolments/product-test-1/enrolment.json --image artifacts/manual/tag.png
 ```
 
 `generate` writes a QR PNG, `enrol` expects three scans by default and writes a bundle plus artifacts for that tag, `scan-qr` verifies the QR signature, and `verify` returns a graded `pass` / `suspicious` / `fail` verdict using both the grayscale fingerprint path and a lightweight color signature from the support patches.

@@ -19,7 +19,7 @@ from scripts.manual_artifacts import save_image_array
 
 
 def test_preprocess_returns_expected_shape_and_dtype() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
 
     result = preprocess(png_bytes)
 
@@ -30,7 +30,7 @@ def test_preprocess_returns_expected_shape_and_dtype() -> None:
 
 
 def test_preprocess_bytes_input_matches_path_contract(tmp_path) -> None:
-    image = cv2.imdecode(np.frombuffer(generate_qr(b"example-cbor-payload", "product-123"), dtype=np.uint8), cv2.IMREAD_COLOR)
+    image = cv2.imdecode(np.frombuffer(generate_qr(b"example-cbor-payload", "product-test-1"), dtype=np.uint8), cv2.IMREAD_COLOR)
     image_path = save_image_array(image, "sample.png", output_dir=tmp_path)
 
     path_result = preprocess(str(image_path))
@@ -48,7 +48,7 @@ def test_preprocess_rejects_non_localizable_images() -> None:
 
 
 def test_preprocess_output_can_be_saved_for_manual_inspection() -> None:
-    image = generate_qr(b"example-cbor-payload", "product-123")
+    image = generate_qr(b"example-cbor-payload", "product-test-1")
 
     result = preprocess(image)
     output_path = save_image_array(result, "preprocessed-test.png")
@@ -60,7 +60,7 @@ def test_preprocess_output_can_be_saved_for_manual_inspection() -> None:
 
 
 def test_preprocess_tag_returns_canvas_and_split_regions() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
 
     tag = preprocess_tag(png_bytes)
 
@@ -73,8 +73,8 @@ def test_preprocess_tag_returns_canvas_and_split_regions() -> None:
 
 
 def test_preprocess_tag_retains_alignment_optimizations() -> None:
-    signed_payload = sign_payload("product-123", "vendor-abc", b"\x00" * 32)
-    png_bytes = generate_qr(signed_payload, "product-123")
+    signed_payload = sign_payload("product-test-1", "vendor-abc", b"\x00" * 32)
+    png_bytes = generate_qr(signed_payload, "product-test-1")
 
     tag = preprocess_tag(png_bytes)
 
@@ -83,8 +83,8 @@ def test_preprocess_tag_retains_alignment_optimizations() -> None:
 
 
 def test_ecc_refinement_helper_runs_on_template_image() -> None:
-    signed_payload = sign_payload("product-123", "vendor-abc", b"\x00" * 32)
-    png_bytes = generate_qr(signed_payload, "product-123")
+    signed_payload = sign_payload("product-test-1", "vendor-abc", b"\x00" * 32)
+    png_bytes = generate_qr(signed_payload, "product-test-1")
 
     source = cv2.imdecode(np.frombuffer(png_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
     payload_uri = decode_qr_payload(png_bytes)
@@ -98,8 +98,8 @@ def test_ecc_refinement_helper_runs_on_template_image() -> None:
 
 
 def test_decode_qr_payload_round_trips_generated_tag() -> None:
-    signed_payload = sign_payload("product-123", "vendor-abc", b"\x00" * 32)
-    png_bytes = generate_qr(signed_payload, "product-123")
+    signed_payload = sign_payload("product-test-1", "vendor-abc", b"\x00" * 32)
+    png_bytes = generate_qr(signed_payload, "product-test-1")
 
     data = decode_qr_payload(png_bytes)
 
@@ -107,7 +107,7 @@ def test_decode_qr_payload_round_trips_generated_tag() -> None:
 
 
 def test_preprocess_tag_localizes_perspective_photo() -> None:
-    source = cv2.imdecode(np.frombuffer(generate_qr(b"example-cbor-payload", "product-123"), dtype=np.uint8), cv2.IMREAD_COLOR)
+    source = cv2.imdecode(np.frombuffer(generate_qr(b"example-cbor-payload", "product-test-1"), dtype=np.uint8), cv2.IMREAD_COLOR)
     height, width = source.shape[:2]
     canvas = np.full((height * 3, width * 3, 3), 245, dtype=np.uint8)
     src_points = np.array(
@@ -132,7 +132,7 @@ def test_preprocess_tag_localizes_perspective_photo() -> None:
 
 
 def test_extract_reference_patches_returns_rgb_anchors() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
 
     patches = extract_reference_patches(png_bytes, patch_size=48)
 

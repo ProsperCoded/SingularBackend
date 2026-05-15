@@ -55,7 +55,7 @@ def test_phash_output_can_be_saved_for_manual_inspection() -> None:
 
 
 def test_compute_region_phashes_returns_split_hashes() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
 
     region_hashes = compute_region_phashes(preprocess_tag(png_bytes))
 

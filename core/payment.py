@@ -17,6 +17,7 @@ async def initiate_squad_transaction(
 ) -> dict[str, object]:
     if settings.SKIP_PAYMENT_VERIFICATION:
         import uuid
+
         mock_ref = transaction_ref or f"MOCK_REF_{uuid.uuid4().hex[:8]}"
         print(f"Skipping payment initiation for {email}. Using mock ref: {mock_ref}")
         return {
@@ -50,21 +51,21 @@ async def initiate_squad_transaction(
             print(f"Initiating Squad transaction for {email} at {url}")
             response = await client.post(url, headers=headers, json=payload)
             print(f"Squad API Response Status: {response.status_code}")
-            
+
             resp_json = response.json()
             if response.status_code != 200:
                 print(f"Squad API Error Body: {resp_json}")
-                
+
             response.raise_for_status()
-            
+
             data = resp_json.get("data")
             if not isinstance(data, dict):
-                 # Some versions of Squad return the fields at root, though docs say data
-                 data = resp_json
+                # Some versions of Squad return the fields at root, though docs say data
+                data = resp_json
 
             checkout_url = data.get("checkout_url") or data.get("auth_url")
             generated_ref = data.get("transaction_ref") or data.get("Transaction_Ref")
-            
+
             if not isinstance(generated_ref, str) or not generated_ref:
                 print(f"Malformed Squad Response (Missing Ref): {resp_json}")
                 raise HTTPException(
@@ -84,15 +85,18 @@ async def initiate_squad_transaction(
             }
     except httpx.HTTPError as e:
         print(f"Squad API Connection/HTTP Error: {type(e).__name__} - {e}")
-        if hasattr(e, 'response') and e.response:
-             print(f"Squad Error Response: {e.response.text}")
+        if hasattr(e, "response") and e.response:
+            print(f"Squad Error Response: {e.response.text}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to communicate with the payment gateway: {str(e)}",
         )
     except Exception as e:
-        print(f"Unexpected Error in initiate_squad_transaction: {type(e).__name__} - {e}")
+        print(
+            f"Unexpected Error in initiate_squad_transaction: {type(e).__name__} - {e}"
+        )
         import traceback
+
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -100,51 +104,56 @@ async def initiate_squad_transaction(
         )
 
 
-async def verify_squad_transaction(transaction_ref: str, expected_amount: int):
+async def verify_squad_transaction(
+    transaction_ref: str, expected_amount: int | None = None
+):
     """
-    Calls the Squad API to ensure a transaction was actually successful 
-    and matches the amount we expect them to pay.
+    Calls the Squad API to ensure a transaction was actually successful.
+    The backend persists the transaction reference after status verification.
     """
     if settings.SKIP_PAYMENT_VERIFICATION:
         print(f"Skipping payment verification for ref: {transaction_ref}")
         return True
 
     url = f"{settings.SQUAD_BASE_URL}/transaction/verify/{transaction_ref}"
-    
+
     headers = {
         "Authorization": f"Bearer {settings.SQUAD_SECRET_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=headers)
-            response.raise_for_status() # Raises an error for 4xx/5xx responses
-            
+            response.raise_for_status()  # Raises an error for 4xx/5xx responses
+
             data = response.json()
-            
-            # Check if Squad actually says it was successful
-            if str(data.get("data", {}).get("transaction_status", "")).lower() != "success":
+            transaction_data = data.get("data", {})
+            print(
+                "Squad transaction verification result "
+                f"ref={transaction_ref} status={transaction_data.get('transaction_status')!r}"
+            )
+
+            # Check if Squad actually says it was successful.
+            if str(transaction_data.get("transaction_status", "")).lower() != "success":
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Transaction was not successful according to Squad."
+                    detail="Transaction was not successful according to Squad.",
                 )
-            
-            # Check the amount. Squad returns the amount in kobo (multiply Naira by 100)
-            # If your tag costs 5 Naira, expected_amount should be 500 kobo per tag.
-            actual_amount = data.get("data", {}).get("transaction_amount")
-            
-            if actual_amount != expected_amount:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Payment mismatch. Expected {expected_amount} kobo, but Squad reported {actual_amount} kobo."
+
+            if expected_amount is not None:
+                print(
+                    "Squad transaction amount check skipped "
+                    f"ref={transaction_ref} expected_amount={expected_amount}"
                 )
-            
+
             return True
 
     except httpx.HTTPError as e:
-        print(f"Squad API Error: {e}")
+        print(e)
+        print(f"Squad API Error: {e.message}")
+        print(f"transaction reference : {transaction_ref}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to communicate with the payment gateway."
+            detail="Failed to communicate with the payment gateway.",
         )

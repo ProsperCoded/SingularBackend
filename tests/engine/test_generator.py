@@ -8,7 +8,7 @@ from scripts.manual_artifacts import save_png_bytes
 
 
 def test_generate_qr_returns_png_bytes() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
 
     assert isinstance(png_bytes, bytes)
     assert png_bytes.startswith(b"\x89PNG\r\n\x1a\n")
@@ -16,7 +16,7 @@ def test_generate_qr_returns_png_bytes() -> None:
 
 
 def test_generate_qr_png_is_decodable_image() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
 
     image = cv2.imdecode(np.frombuffer(png_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
 
@@ -33,7 +33,7 @@ def test_generate_qr_png_is_decodable_image() -> None:
 
 
 def test_generate_qr_output_can_be_saved_for_manual_inspection() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
     output_path = save_png_bytes(png_bytes, "qr-stage1-test.png")
 
     assert output_path.exists()

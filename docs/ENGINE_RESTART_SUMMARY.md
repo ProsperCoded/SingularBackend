@@ -166,16 +166,16 @@ If you are restarting backend integration:
 source .venv/bin/activate
 export PYTHONPATH=src:.
 
-engine generate --product-id product-123 --vendor-id vendor-abc --output artifacts/manual/tag.png
+engine generate --product-id product-test-1 --vendor-id vendor-abc --output artifacts/manual/tag.png
 engine scan-qr --image artifacts/manual/tag.png
 engine enrol \
   --image ~/Downloads/enrol-1.jpeg \
   --image ~/Downloads/enrol-2.jpeg \
   --image ~/Downloads/enrol-3.jpeg \
-  --product-id product-123 \
+  --product-id product-test-1 \
   --vendor-id vendor-abc \
-  --output-dir artifacts/manual/enrolments/product-123
-engine verify --bundle artifacts/manual/enrolments/product-123/enrolment.json --image ~/Downloads/correct2.jpeg
+  --output-dir artifacts/manual/enrolments/product-test-1
+engine verify --bundle artifacts/manual/enrolments/product-test-1/enrolment.json --image ~/Downloads/correct2.jpeg
 ```
 
 ## Verification State

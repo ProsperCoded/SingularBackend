@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -98,3 +99,38 @@ def test_initiate_tag_payment_rejects_unknown_vendor_id(monkeypatch: pytest.Monk
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Vendor 'vendor-9' not found."
+
+
+def test_verify_squad_transaction_accepts_successful_reference_even_if_amount_differs(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core import payment as payment_module
+
+    class FakeResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "data": {
+                    "transaction_status": "success",
+                    "transaction_amount": 2500000,
+                }
+            }
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url, headers=None):
+            return FakeResponse()
+
+    monkeypatch.setattr(payment_module.settings, "SKIP_PAYMENT_VERIFICATION", False)
+    monkeypatch.setattr(payment_module.httpx, "AsyncClient", lambda: FakeClient())
+
+    result = asyncio.run(payment_module.verify_squad_transaction("SQ-123"))
+
+    assert result is True

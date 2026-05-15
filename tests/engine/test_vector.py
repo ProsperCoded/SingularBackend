@@ -46,7 +46,7 @@ def test_cosine_similarity_handles_zero_vectors() -> None:
 
 
 def test_build_vector_works_with_real_stage_outputs() -> None:
-    png_bytes = generate_qr(b"example-cbor-payload", "product-123")
+    png_bytes = generate_qr(b"example-cbor-payload", "product-test-1")
     primary_region = preprocess_tag(png_bytes).primary_region
 
     combined = build_vector(
