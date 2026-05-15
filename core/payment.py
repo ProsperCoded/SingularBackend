@@ -123,7 +123,7 @@ async def verify_squad_transaction(
     }
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  # Raises an error for 4xx/5xx responses
 
@@ -150,9 +150,8 @@ async def verify_squad_transaction(
             return True
 
     except httpx.HTTPError as e:
-        print(e)
-        print(f"Squad API Error: {e.message}")
-        print(f"transaction reference : {transaction_ref}")
+        print(f"Squad API Error: {type(e).__name__} - {e}")
+        print(f"transaction reference: {transaction_ref}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to communicate with the payment gateway.",

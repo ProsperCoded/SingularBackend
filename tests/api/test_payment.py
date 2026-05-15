@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -134,3 +135,28 @@ def test_verify_squad_transaction_accepts_successful_reference_even_if_amount_di
     result = asyncio.run(payment_module.verify_squad_transaction("SQ-123"))
 
     assert result is True
+
+
+def test_verify_squad_transaction_raises_502_on_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import HTTPException
+
+    from core import payment as payment_module
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url, headers=None):
+            raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(payment_module.settings, "SKIP_PAYMENT_VERIFICATION", False)
+    monkeypatch.setattr(payment_module.httpx, "AsyncClient", lambda timeout=10.0: FakeClient())
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(payment_module.verify_squad_transaction("SQ-123"))
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Failed to communicate with the payment gateway."
