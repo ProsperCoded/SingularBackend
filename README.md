@@ -9,7 +9,7 @@ This repository houses the business logic API layer that sits between the fronte
 The PrintPUF system is divided into three main components:
 
 1. **The Core Engine**: Handles all computer vision, feature extraction, vector normalisation, AES-256 encryption, and pgvector cosine similarity queries.
-2. **The Backbone (API)**: Built with FastAPI and SQLModel. It handles routing, database schemas, analytics, trust score algorithms, vendor management, and user sync via Clerk webhooks.
+2. **The Backbone (API)**: Built with FastAPI and SQLModel. It handles routing, database schemas, analytics, trust score algorithms, vendor management, and backend-authenticated users.
 3. **The Interface (Frontend)**: A React.js application that provides the consumer scan flow, brand dashboard, and vendor pages.
 
 ## Features
@@ -18,14 +18,13 @@ The PrintPUF system is divided into three main components:
 - **Vendor Trust Algorithm**: Computes dynamic trust scores (0-100) and assigns badge tiers (Gold, Silver, Bronze) based on the ratio of authentic scans to fake attempts. Includes 7-day trend analysis.
 - **Brand Analytics**: Aggregates scan events across products to provide brands with insights into authentic rates, fake attempts, and individual vendor performance.
 - **Tag Lifecycle Management**: Generates, enrols, verifies, and lists individual PUF tags, with Squad-backed payment verification for tag creation.
-- **Clerk Integration**: Seamlessly syncs user creation and deletion from the frontend via webhooks.
 
 ## Tech Stack
 
 - **Framework**: FastAPI
 - **ORM**: SQLModel (Async SQLAlchemy)
 - **Database**: PostgreSQL with `pgvector` extension (Hosted on DigitalOcean)
-- **Authentication**: Clerk (via webhooks)
+- **Authentication**: Backend-issued JWT bearer tokens
 - **Payments**: Squad API
 - **Storage**: DigitalOcean Spaces (S3 compatible)
 
@@ -57,7 +56,7 @@ The PrintPUF system is divided into three main components:
 
    ```env
    DATABASE_URL="postgresql://user:pass@host:5432/dbname?sslmode=require"
-   CLERK_WEBHOOK_SECRET="whsec_..."
+   JWT_SECRET_KEY="change-me-in-production"
    SQUAD_SECRET_KEY="sandbox_..."
    SQUAD_BASE_URL="https://sandbox-api-d.squadco.com"
    DO_SPACES_KEY="..."
