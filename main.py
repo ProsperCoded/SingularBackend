@@ -7,6 +7,7 @@ from api.vendors import router as vendors_router
 from api.tags import router as tags_router
 from api.verify import router as verify_router
 from api.analytics import router as analytics_router
+from core.config import settings
 from core.database import async_engine
 from core.schema import ensure_schema
 
@@ -39,7 +40,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def on_startup():
-    await ensure_schema(async_engine)
+    if settings.SYNC_DATABASE:
+        await ensure_schema(async_engine)
 
 
 api_router = APIRouter(prefix="/api")

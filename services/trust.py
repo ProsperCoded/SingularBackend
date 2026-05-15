@@ -38,12 +38,13 @@ async def compute_trust_score(
     suspicious = counts.get("SUSPICIOUS", 0)
     total = authentic + fake + suspicious
 
-    # Compute trust score as a percentage of authentic scans
-    if total == 0:
-        # No scans yet, default to 100 (benefit of the doubt)
-        trust_score = 100.0
-    else:
-        trust_score = round((authentic / total) * 100, 2)
+    # Trust score starts at 50.0. 
+    # We use a prior of 10 total scans (5 authentic, 5 non-authentic) to provide 
+    # a balanced starting point that moves as real data arrives.
+    prior_authentic = 5
+    prior_total = 10
+    
+    trust_score = round(((authentic + prior_authentic) / (total + prior_total)) * 100, 2)
 
     badge_tier = get_badge_tier(trust_score)
 

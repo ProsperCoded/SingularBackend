@@ -38,6 +38,8 @@ def test_tag_generate_list_and_verify_flow(client, brand_token: str, monkeypatch
     monkeypatch.setattr(tags_module, "verify_squad_transaction", _fake_verify_transaction)
     monkeypatch.setattr(tags_module.engine, "generate_tag", _fake_generate_tag)
     monkeypatch.setattr(tags_module.engine, "verify_tag", _fake_verify_tag)
+    monkeypatch.setattr(tags_module, "upload_qr_png", lambda product_id, png_bytes: None)
+    monkeypatch.setattr(tags_module, "download_qr_png", lambda product_id: None)
 
     generate_response = client.post(
         "/api/tags/generate",

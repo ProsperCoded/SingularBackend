@@ -16,6 +16,7 @@ from core.config import settings
 from core.database import get_db_session
 from core.payment import verify_squad_transaction
 from core.payment import initiate_squad_transaction
+from core.spaces import download_qr_png, encode_png_bytes, upload_qr_png
 from models.product import Product
 from models.scan_event import ScanEvent
 from models.user import User, UserRole
@@ -42,7 +43,31 @@ REQUIRED_ENROLMENT_SCANS = 3
 
 
 def _encode_png_bytes(png_bytes: bytes) -> str:
-    return base64.b64encode(png_bytes).decode("ascii")
+    return encode_png_bytes(png_bytes)
+
+
+def _persist_qr_png(product_id: str, png_bytes: bytes) -> None:
+    try:
+        upload_qr_png(product_id, png_bytes)
+    except Exception as exc:
+        print(f"[spaces] Failed to upload QR asset for {product_id}: {exc}")
+
+
+def _resolve_qr_png_b64(product_id: str, cached_b64: str | None) -> str:
+    try:
+        stored_png = download_qr_png(product_id)
+    except Exception as exc:
+        print(f"[spaces] Failed to download QR asset for {product_id}: {exc}")
+        stored_png = None
+
+    if stored_png is not None:
+        return _encode_png_bytes(stored_png)
+
+    if cached_b64:
+        _persist_qr_png(product_id, base64.b64decode(cached_b64))
+        return cached_b64
+
+    return ""
 
 
 def _resolve_product_id(raw_value: str) -> str:
@@ -68,15 +93,56 @@ def _resolve_product_id(raw_value: str) -> str:
     return product_id
 
 
+def _normalize_enrolment_error(detail: str) -> str:
+    if "does not match" in detail and "product_id" in detail:
+        return (
+            "The uploaded scans belong to a different tag. "
+            f"{detail}. Use the current QR shown on this tag page when printing and enrolling."
+        )
+    if "must contain a decodable QR payload" in detail:
+        return (
+            "One or more uploaded scans do not contain a readable PrintPUF QR payload. "
+            "Retake the photos with the full tag visible and the QR region in focus."
+        )
+    return detail
+
+
+async def _require_vendor_id(
+    session: AsyncSession, vendor_id: str | None
+) -> str | None:
+    normalized_vendor_id = vendor_id.strip() if isinstance(vendor_id, str) else None
+    if not normalized_vendor_id:
+        return None
+
+    vendor_statement = select(User.id).where(User.vendor_id == normalized_vendor_id)
+    vendor_result = await session.exec(vendor_statement)
+    vendor = vendor_result.first()
+    if not vendor:
+        print(f"[tags] Rejected unknown vendor_id={normalized_vendor_id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Vendor '{normalized_vendor_id}' not found.",
+        )
+
+    return normalized_vendor_id
+
+
 @router.post("/payment/initiate", response_model=TagPaymentInitiateResponse)
 async def initiate_tag_payment(
     payload: TagPaymentInitiateRequest,
     current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
 ):
     if current_user.role != UserRole.BRAND:
         raise HTTPException(
             status_code=403, detail="Only Brands can create tag payments."
         )
+
+    vendor_id = await _require_vendor_id(session, payload.vendor_id)
+    print(
+        "[tags] Initiating tag payment "
+        f"brand_id={current_user.id} product_type={payload.product_type!r} vendor_id={vendor_id!r}"
+    )
 
     result = await initiate_squad_transaction(
         email=current_user.email,
@@ -86,7 +152,7 @@ async def initiate_tag_payment(
             "purpose": "tag_generation",
             "brand_id": current_user.id,
             "product_type": payload.product_type,
-            "vendor_id": payload.vendor_id,
+            "vendor_id": vendor_id,
         },
     )
     return TagPaymentInitiateResponse(
@@ -126,16 +192,22 @@ async def generate_tag(
         )
 
     await verify_squad_transaction(transaction_ref, COST_PER_TAG_KOBO)
+    normalized_vendor_id = await _require_vendor_id(session, vendor_id)
+    print(
+        "[tags] Generating tag "
+        f"brand_id={current_user.id} transaction_ref={transaction_ref} vendor_id={normalized_vendor_id!r}"
+    )
 
     product_id = uuid.uuid4().hex
     generated_tag = await engine.generate_tag(
-        product_id=product_id, vendor_id=vendor_id
+        product_id=product_id, vendor_id=normalized_vendor_id
     )
+    _persist_qr_png(product_id, generated_tag.qr_png_bytes)
 
     product = Product(
         id=product_id,
         brand_id=current_user.id,
-        vendor_id=vendor_id,
+        vendor_id=normalized_vendor_id,
         product_type=product_type,
         transaction_ref=transaction_ref,
         status="generated",
@@ -151,7 +223,7 @@ async def generate_tag(
         vendor_id=product.vendor_id,
         product_type=product.product_type,
         transaction_ref=product.transaction_ref,
-        qr_png_b64=product.qr_png_b64 or "",
+        qr_png_b64=_resolve_qr_png_b64(product.id, product.qr_png_b64),
         status=product.status,
         created_at=product.created_at,
     )
@@ -181,17 +253,35 @@ async def enrol_tag(
     if product.brand_id != current_user.id:
         raise HTTPException(status_code=403, detail="You do not own this tag.")
 
-    image_bytes = [await image.read() for image in images]
-    enrolment_result = await engine.enrol_tag(
-        image_source=image_bytes,
-        product_id=product.id,
-        vendor_id=product.vendor_id,
-        required_scan_count=REQUIRED_ENROLMENT_SCANS,
+    print(
+        "[tags] Starting tag enrolment "
+        f"brand_id={current_user.id} product_id={product.id} vendor_id={product.vendor_id!r} "
+        f"scan_count={len(images)}"
     )
+
+    image_bytes = [await image.read() for image in images]
+    try:
+        enrolment_result = await engine.enrol_tag(
+            image_source=image_bytes,
+            product_id=product.id,
+            vendor_id=product.vendor_id,
+            required_scan_count=REQUIRED_ENROLMENT_SCANS,
+        )
+    except ValueError as exc:
+        detail = _normalize_enrolment_error(str(exc))
+        print(
+            "[tags] Rejected tag enrolment "
+            f"brand_id={current_user.id} product_id={product.id} reason={detail}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        ) from exc
 
     product.enrolment_bundle = serialize_enrolment_bundle(
         enrolment_result, vendor_id=product.vendor_id
     )
+    _persist_qr_png(product.id, enrolment_result.updated_qr_png_bytes)
     product.qr_png_b64 = _encode_png_bytes(enrolment_result.updated_qr_png_bytes)
     product.enrolment_scan_count = enrolment_result.scan_count
     product.status = "enrolled"
@@ -200,6 +290,11 @@ async def enrol_tag(
     session.add(product)
     await session.commit()
     await session.refresh(product)
+    print(
+        "[tags] Completed tag enrolment "
+        f"brand_id={current_user.id} product_id={product.id} vendor_id={product.vendor_id!r} "
+        f"scan_count={product.enrolment_scan_count}"
+    )
 
     return TagEnrolResponse(
         product_id=product.id,
@@ -208,7 +303,7 @@ async def enrol_tag(
         product_type=product.product_type,
         status=product.status,
         enrolment_scan_count=product.enrolment_scan_count,
-        qr_png_b64=product.qr_png_b64 or "",
+        qr_png_b64=_resolve_qr_png_b64(product.id, product.qr_png_b64),
         enrolled_at=product.enrolled_at or product.created_at,
         updated_at=product.updated_at,
     )
@@ -240,6 +335,7 @@ async def list_tags(
                 status=product.status,
                 transaction_ref=product.transaction_ref,
                 enrolment_scan_count=product.enrolment_scan_count,
+                qr_png_b64=_resolve_qr_png_b64(product.id, product.qr_png_b64),
                 created_at=product.created_at,
                 enrolled_at=product.enrolled_at,
             )

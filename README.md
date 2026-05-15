@@ -26,7 +26,7 @@ The PrintPUF system is divided into three main components:
 - **Database**: PostgreSQL with `pgvector` extension (Hosted on DigitalOcean)
 - **Authentication**: Backend-issued JWT bearer tokens
 - **Payments**: Squad API
-- **Storage**: DigitalOcean Spaces (S3 compatible)
+- **Storage**: DigitalOcean Spaces (S3 compatible) for QR assets, with a database cache for compatibility
 
 ## Setup & Local Development
 

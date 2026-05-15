@@ -37,6 +37,7 @@ class TagItemResponse(BaseModel):
     status: str
     transaction_ref: str
     enrolment_scan_count: int
+    qr_png_b64: str = Field(..., description="Base64-encoded QR PNG asset")
     created_at: datetime
     enrolled_at: Optional[datetime]
 

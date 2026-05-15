@@ -84,8 +84,16 @@ def test_generate_tag_creates_product_and_returns_qr(monkeypatch: pytest.MonkeyP
     async def _fake_generate_tag(*, product_id: str, vendor_id: str | None = None):
         return SimpleNamespace(product_id=product_id, qr_png_bytes=b"qr-bytes")
 
+    upload_calls: list[tuple[str, bytes]] = []
+
     monkeypatch.setattr(tags_module, "verify_squad_transaction", _fake_verify_transaction)
     monkeypatch.setattr(tags_module.engine, "generate_tag", _fake_generate_tag)
+    monkeypatch.setattr(tags_module, "download_qr_png", lambda product_id: None)
+    monkeypatch.setattr(
+        tags_module,
+        "upload_qr_png",
+        lambda product_id, png_bytes: upload_calls.append((product_id, png_bytes)),
+    )
 
     client, session = _client_for()
     response = client.post(
@@ -104,6 +112,30 @@ def test_generate_tag_creates_product_and_returns_qr(monkeypatch: pytest.MonkeyP
     product = session.added[0]
     assert product.status == "generated"
     assert product.transaction_ref == "txn-123"
+    assert upload_calls == [(body["product_id"], b"qr-bytes")]
+
+
+def test_generate_tag_rejects_unknown_vendor_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    from api import tags as tags_module
+
+    async def _fake_verify_transaction(_transaction_ref: str, _expected_amount: int):
+        return True
+
+    async def _unexpected_generate_tag(*_args, **_kwargs):
+        pytest.fail("engine.generate_tag should not be called when vendor_id is invalid")
+
+    monkeypatch.setattr(tags_module, "verify_squad_transaction", _fake_verify_transaction)
+    monkeypatch.setattr(tags_module.engine, "generate_tag", _unexpected_generate_tag)
+
+    client, session = _client_for(session=FakeSession(exec_results=[[], []]))
+    response = client.post(
+        "/api/tags/generate",
+        data={"transaction_ref": "txn-123", "product_type": "Sneakers", "vendor_id": "vendor-9"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Vendor 'vendor-9' not found."
+    assert session.added == []
 
 
 def test_enrol_tag_persists_bundle_and_updated_qr(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -124,6 +156,13 @@ def test_enrol_tag_persists_bundle_and_updated_qr(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(tags_module.engine, "enrol_tag", _fake_enrol_tag)
     monkeypatch.setattr(tags_module, "serialize_enrolment_bundle", lambda enrolment_result, vendor_id=None: {"product_id": "product-1", "vendor_id": vendor_id})
+    monkeypatch.setattr(tags_module, "download_qr_png", lambda product_id: None)
+    upload_calls: list[tuple[str, bytes]] = []
+    monkeypatch.setattr(
+        tags_module,
+        "upload_qr_png",
+        lambda product_id, png_bytes: upload_calls.append((product_id, png_bytes)),
+    )
 
     client, session = _client_for(session=FakeSession(get_result=product))
     response = client.post(
@@ -144,6 +183,68 @@ def test_enrol_tag_persists_bundle_and_updated_qr(monkeypatch: pytest.MonkeyPatc
     assert product.status == "enrolled"
     assert product.enrolment_bundle == {"product_id": "product-1", "vendor_id": "vendor-9"}
     assert session.commits == 1
+    assert upload_calls == [("product-1", b"updated-qr")]
+
+
+def test_generate_tag_prefers_spaces_when_cache_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    from api import tags as tags_module
+
+    async def _fake_verify_transaction(_transaction_ref: str, _expected_amount: int):
+        return True
+
+    async def _fake_generate_tag(*, product_id: str, vendor_id: str | None = None):
+        return SimpleNamespace(product_id=product_id, qr_png_bytes=b"qr-bytes")
+
+    monkeypatch.setattr(tags_module, "verify_squad_transaction", _fake_verify_transaction)
+    monkeypatch.setattr(tags_module.engine, "generate_tag", _fake_generate_tag)
+    monkeypatch.setattr(tags_module, "upload_qr_png", lambda product_id, png_bytes: None)
+    monkeypatch.setattr(tags_module, "download_qr_png", lambda product_id: b"remote-bytes")
+
+    client, _ = _client_for()
+    response = client.post(
+        "/api/tags/generate",
+        data={"transaction_ref": "txn-456", "product_type": "Hoodie"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["qr_png_b64"] == base64.b64encode(b"remote-bytes").decode("ascii")
+
+
+def test_enrol_tag_returns_400_for_product_id_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    from api import tags as tags_module
+
+    product = Product(
+        id="0f6e5c55fa0c4e2bbb6cd1933d9cfe5a",
+        brand_id="brand-1",
+        vendor_id="vendor-9",
+        product_type="PEM",
+        transaction_ref="txn-123",
+        status="generated",
+        qr_png_b64="initial",
+    )
+
+    async def _fake_enrol_tag(*, image_source, product_id: str, vendor_id: str | None = None, required_scan_count: int = 3):
+        raise ValueError(
+            "enrolment image payload product_id 'product-123' does not match "
+            "'0f6e5c55fa0c4e2bbb6cd1933d9cfe5a'"
+        )
+
+    monkeypatch.setattr(tags_module.engine, "enrol_tag", _fake_enrol_tag)
+
+    client, session = _client_for(session=FakeSession(get_result=product))
+    response = client.post(
+        "/api/tags/enrol",
+        data={"product_id": product.id},
+        files=[
+            ("images", ("scan-1.jpg", b"scan-1", "image/jpeg")),
+            ("images", ("scan-2.jpg", b"scan-2", "image/jpeg")),
+            ("images", ("scan-3.jpg", b"scan-3", "image/jpeg")),
+        ],
+    )
+
+    assert response.status_code == 400
+    assert "different tag" in response.json()["detail"]
+    assert session.commits == 0
 
 
 def test_list_tags_returns_brand_products() -> None:

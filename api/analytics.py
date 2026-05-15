@@ -54,6 +54,7 @@ async def get_brand_analytics(
     fake = counts.get("FAKE", 0)
     suspicious = counts.get("SUSPICIOUS", 0)
     total = authentic + fake + suspicious
+    flagged = fake + suspicious
 
     authentic_rate = round((authentic / total) * 100, 2) if total > 0 else 0.0
 
@@ -83,7 +84,11 @@ async def get_brand_analytics(
     for vendor_id, verdicts in vendor_data.items():
         v_authentic = verdicts.get("AUTHENTIC", 0)
         v_total = sum(verdicts.values())
-        ratio = round(v_authentic / v_total, 4) if v_total > 0 else 0.0
+        
+        # Apply the same "start at 50" logic: (authentic + 5) / (total + 10)
+        # We store it as a 0-1 ratio for VendorPerformance
+        ratio = round((v_authentic + 5) / (v_total + 10), 4)
+        
         vendor_management.append(
             VendorPerformance(vendor_id=vendor_id, authentic_ratio=ratio)
         )
@@ -92,6 +97,7 @@ async def get_brand_analytics(
         total_scans=total,
         authentic_rate=authentic_rate,
         fake_attempts=fake,
+        flagged_scans=flagged,
         vendor_management=vendor_management,
     )
 
@@ -152,7 +158,10 @@ async def get_vendor_management(
         verdicts = vendor_data.get(vendor_id, {})
         v_authentic = verdicts.get("AUTHENTIC", 0)
         v_total = sum(verdicts.values())
-        ratio = round(v_authentic / v_total, 4) if v_total > 0 else 0.0
+        
+        # Consistent "start at 50" logic
+        ratio = round((v_authentic + 5) / (v_total + 10), 4)
+        
         results.append(
             VendorPerformance(vendor_id=vendor_id, authentic_ratio=ratio)
         )

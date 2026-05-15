@@ -77,3 +77,24 @@ def test_initiate_tag_payment_returns_checkout_url_and_reference(monkeypatch: py
     assert body["transaction_ref"] == "SQ-123"
     assert body["checkout_url"] == "https://checkout.example.test"
     assert body["amount"] == 150
+
+
+def test_initiate_tag_payment_rejects_unknown_vendor_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    from api import tags as tags_module
+
+    session = FakeSession(exec_results=[[]])
+    client = _client_for(session)
+
+    async def _unexpected_initiate_squad_transaction(**kwargs):
+        pytest.fail("initiate_squad_transaction should not be called when vendor_id is invalid")
+
+    monkeypatch.setattr(tags_module, "initiate_squad_transaction", _unexpected_initiate_squad_transaction)
+
+    response = client.post(
+        "/api/tags/payment/initiate",
+        headers={"Authorization": f"Bearer {create_access_token(subject='brand-1')}"},
+        json={"product_type": "Sneakers", "vendor_id": "vendor-9"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Vendor 'vendor-9' not found."

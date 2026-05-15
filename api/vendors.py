@@ -5,6 +5,8 @@ from schemas.vendor import (
     ConfirmVendorId,
     VendorDashboardResponse,
     ScanStats,
+    VendorDirectoryResponse,
+    VendorDirectoryItem,
 )
 from services.trust import compute_trust_score, compute_score_trend
 from core.database import get_db_session
@@ -181,3 +183,41 @@ async def get_vendor_dashboard(
         score_trend=score_trend,
         stats=ScanStats(**stats),
     )
+
+
+@router.get("/directory", response_model=VendorDirectoryResponse)
+async def get_vendor_directory(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Public directory of all registered vendors.
+    Available to Brands to browse potential distribution partners.
+    """
+    if current_user.role != UserRole.BRAND:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Brands can view the vendor directory.",
+        )
+
+    # Get all users who have confirmed a vendor_id
+    statement = select(User).where(User.vendor_id.isnot(None))
+    result = await session.exec(statement)
+    vendor_users = result.all()
+
+    directory_items = []
+    for vendor_user in vendor_users:
+        vendor_id = vendor_user.vendor_id
+        # We know vendor_id exists here because of the query filter
+        trust_score, badge_tier, stats = await compute_trust_score(session, vendor_id)
+        directory_items.append(
+            VendorDirectoryItem(
+                vendor_id=vendor_id,
+                full_name=vendor_user.full_name,
+                trust_score=trust_score,
+                badge_tier=badge_tier,
+                total_scans=stats["total_scans"],
+            )
+        )
+
+    return VendorDirectoryResponse(vendors=directory_items)

@@ -42,3 +42,15 @@ class VendorDashboardResponse(BaseModel):
 class VendorPerformance(BaseModel):
     vendor_id: str
     authentic_ratio: float
+
+
+class VendorDirectoryItem(BaseModel):
+    vendor_id: str
+    full_name: str
+    trust_score: float
+    badge_tier: str
+    total_scans: int
+
+
+class VendorDirectoryResponse(BaseModel):
+    vendors: list[VendorDirectoryItem]

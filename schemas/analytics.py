@@ -7,6 +7,7 @@ class BrandAnalyticsResponse(BaseModel):
     total_scans: int
     authentic_rate: float = Field(..., description="Percentage of authentic scans")
     fake_attempts: int
+    flagged_scans: int = Field(default=0, description="Total non-authentic scans (FAKE + SUSPICIOUS)")
     vendor_management: list[VendorPerformance] = Field(
         ..., description="Per-vendor authentic/fake ratio"
     )
