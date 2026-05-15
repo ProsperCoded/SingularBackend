@@ -30,10 +30,10 @@ def _normalize_database_url(database_url: str) -> tuple[str, dict[str, object]]:
     if url.get_backend_name() == "postgresql" and url.drivername == "postgresql":
         url = url.set(drivername="postgresql+asyncpg")
     if url.get_backend_name() == "postgresql":
-        sslmode = url.query.get("sslmode")
-        if sslmode == "disable":
+        ssl_val = url.query.get("sslmode") or url.query.get("ssl")
+        if ssl_val == "disable":
             connect_args["ssl"] = False
-        elif sslmode is not None:
+        elif ssl_val is not None:
             # Always use the unverified context if SSL is requested, 
             # avoiding brittle DigitalOcean hostname checks.
             connect_args["ssl"] = _build_ssl_context()
@@ -41,8 +41,9 @@ def _normalize_database_url(database_url: str) -> tuple[str, dict[str, object]]:
             # Keep local and non-DO development connections plaintext unless
             # the URL explicitly opts into SSL.
             connect_args["ssl"] = False
-        if sslmode is not None:
-            url = url.difference_update_query(["sslmode"])
+            
+        # Clean up both possible query parameters
+        url = url.difference_update_query(["sslmode", "ssl"])
     return url.render_as_string(hide_password=False), connect_args
 
 
