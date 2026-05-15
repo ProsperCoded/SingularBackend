@@ -38,7 +38,9 @@ async def get_current_user(
                 detail="Invalid token payload: missing subject.",
             )
 
-    except jwt.PyJWTError as e:
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Could not validate credentials: {str(e)}",
