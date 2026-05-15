@@ -35,7 +35,7 @@ from services.trust import compute_trust_score
 
 router = APIRouter(prefix="/tags", tags=["Tags"])
 
-COST_PER_TAG_KOBO = 150
+COST_PER_TAG_KOBO = 15000
 REQUIRED_ENROLMENT_SCANS = 3
 
 
@@ -81,7 +81,11 @@ async def initiate_tag_payment(
             "vendor_id": payload.vendor_id,
         },
     )
-    return TagPaymentInitiateResponse(**result)
+    return TagPaymentInitiateResponse(
+        **result,
+        email=current_user.email,
+        currency="NGN"
+    )
 
 
 @router.post("/generate", response_model=TagGenerateResponse)

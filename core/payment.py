@@ -70,6 +70,10 @@ async def verify_squad_transaction(transaction_ref: str, expected_amount: int):
     Calls the Squad API to ensure a transaction was actually successful 
     and matches the amount we expect them to pay.
     """
+    if settings.SKIP_PAYMENT_VERIFICATION:
+        print(f"Skipping payment verification for ref: {transaction_ref}")
+        return True
+
     url = f"{settings.SQUAD_BASE_URL}/transaction/verify/{transaction_ref}"
     
     headers = {

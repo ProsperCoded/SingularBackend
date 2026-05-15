@@ -8,8 +8,10 @@ class Settings(BaseSettings):
     """
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./printpuf.db"
+    SQUAD_PUBLIC_KEY: str = "test_squad_public"
     SQUAD_SECRET_KEY: str = "test_squad_secret"
     SQUAD_BASE_URL: str = "https://squad.example.test"
+    SKIP_PAYMENT_VERIFICATION: bool = False
     DO_SPACES_REGION: str = "fra1"
     DO_SPACES_KEY: str = "test_key"
     DO_SPACES_SECRET: str = "test_secret"

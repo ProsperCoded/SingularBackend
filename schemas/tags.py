@@ -54,3 +54,5 @@ class TagPaymentInitiateResponse(BaseModel):
     transaction_ref: str
     checkout_url: str
     amount: int
+    email: str
+    currency: str = "NGN"
