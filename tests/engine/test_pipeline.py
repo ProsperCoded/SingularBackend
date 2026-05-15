@@ -49,7 +49,6 @@ def test_enrol_returns_expected_fields_for_single_tag() -> None:
     assert len(result.support_phash_strs) == 3
     assert len(result.canvas_phash_str) == 16
     assert len(result.canvas_phash_strs) == 3
-    assert len(result.lbp_sketch) == 32
     assert result.updated_qr_png_bytes.startswith(b"\x89PNG\r\n\x1a\n")
     assert result.scan_count == 3
 

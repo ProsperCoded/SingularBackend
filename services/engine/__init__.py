@@ -2,7 +2,7 @@
 
 from .color_features import compare_color_signatures, extract_color_signature
 from .generator import generate_qr
-from .lbp import compute_lbp_sketch, extract_lbp
+from .lbp import extract_lbp
 from .phash import (
     PHASH_THRESHOLD,
     SUPPORT_PHASH_THRESHOLD,
@@ -41,7 +41,6 @@ __all__ = [
     "build_vector",
     "compare_color_signatures",
     "compare_phash",
-    "compute_lbp_sketch",
     "compute_phash",
     "compute_region_phashes",
     "cosine_similarity",

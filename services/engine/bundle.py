@@ -64,7 +64,6 @@ def serialize_enrolment_bundle(result: EnrolResult, vendor_id: str | None) -> di
         "support_phash_strs": list(result.support_phash_strs),
         "canvas_phash_str": result.canvas_phash_str,
         "canvas_phash_strs": list(result.canvas_phash_strs),
-        "lbp_sketch_b64": base64.b64encode(result.lbp_sketch).decode("ascii"),
         "combined_vector": _vector_to_bundle(result.combined_vector),
         "combined_vectors": [_vector_to_bundle(vector) for vector in result.combined_vectors],
         "color_signature": _vector_to_bundle(result.color_signature),
@@ -84,7 +83,8 @@ def load_enrolment_bundle(bundle_source: str | Path | Mapping[str, object]) -> d
     )
     bundle["color_signature"] = _vector_from_bundle(bundle["color_signature"])
     bundle["color_signatures"] = tuple(_vector_from_bundle(payload) for payload in bundle["color_signatures"])
-    bundle["lbp_sketch"] = base64.b64decode(str(bundle["lbp_sketch_b64"]).encode("ascii"))
+    bundle.pop("lbp_sketch_b64", None)
+    bundle.pop("lbp_sketch", None)
     bundle["primary_phash_strs"] = tuple(bundle.get("primary_phash_strs", [bundle["primary_phash_str"]]))
     bundle["support_phash_strs"] = tuple(bundle.get("support_phash_strs", [bundle["support_phash_str"]]))
     bundle["canvas_phash_strs"] = tuple(bundle.get("canvas_phash_strs", [bundle["canvas_phash_str"]]))
@@ -224,4 +224,3 @@ def map_engine_verdict_to_backend(engine_verdict: str) -> str:
         return mapping[engine_verdict]
     except KeyError as exc:
         raise ValueError(f"Unsupported engine verdict: {engine_verdict!r}") from exc
-

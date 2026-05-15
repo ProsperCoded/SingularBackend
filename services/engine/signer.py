@@ -81,20 +81,23 @@ def _resolve_public_key_pem(public_key_pem: bytes | None) -> bytes:
     return public_key_pem
 
 
-def _build_message(product_id: str, vendor_id: str | None, lbp_sketch: bytes) -> bytes:
-    return product_id.encode() + (vendor_id or "").encode() + lbp_sketch
+def _build_message(product_id: str, vendor_id: str | None, lbp_sketch: bytes | None = None) -> bytes:
+    message = product_id.encode() + (vendor_id or "").encode()
+    if lbp_sketch is not None:
+        message += lbp_sketch
+    return message
 
 
 def sign_payload(
     product_id: str,
     vendor_id: str | None,
-    lbp_sketch: bytes,
+    lbp_sketch: bytes | None = None,
     private_key_pem: bytes | None = None,
 ) -> bytes:
     if not product_id:
         raise ValueError("product_id must be a non-empty string")
-    if not isinstance(lbp_sketch, bytes) or len(lbp_sketch) != 32:
-        raise ValueError("lbp_sketch must be exactly 32 bytes")
+    if lbp_sketch is not None and (not isinstance(lbp_sketch, bytes) or len(lbp_sketch) != 32):
+        raise ValueError("lbp_sketch must be exactly 32 bytes when provided")
 
     private_key = _load_private_key(_resolve_private_key_pem(private_key_pem))
     message = _build_message(product_id, vendor_id, lbp_sketch)
@@ -103,9 +106,10 @@ def sign_payload(
     payload = {
         "pid": product_id,
         "vid": vendor_id,
-        "sketch": lbp_sketch,
         "sig": signature,
     }
+    if lbp_sketch is not None:
+        payload["sketch"] = lbp_sketch
     return cbor2.dumps(payload)
 
 
@@ -114,7 +118,10 @@ def verify_payload(cbor_bytes: bytes, public_key_pem: bytes | None = None) -> di
         raise ValueError("cbor_bytes must be non-empty bytes")
 
     payload = cbor2.loads(cbor_bytes)
-    message = _build_message(payload["pid"], payload["vid"], payload["sketch"])
+    sketch = payload.get("sketch")
+    if sketch is not None and (not isinstance(sketch, bytes) or len(sketch) != 32):
+        raise ValueError("payload sketch must be exactly 32 bytes when present")
+    message = _build_message(payload["pid"], payload["vid"], sketch)
 
     public_key = _load_public_key(_resolve_public_key_pem(public_key_pem))
     public_key.verify(payload["sig"], message)

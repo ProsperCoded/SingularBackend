@@ -10,7 +10,7 @@ import numpy as np
 
 from .color_features import extract_color_signature
 from .generator import generate_qr
-from .lbp import compute_lbp_sketch, extract_lbp
+from .lbp import extract_lbp
 from .mobilenet import extract_mobilenet
 from .phash import compute_region_phashes
 from .preprocessor import PreprocessedTag, preprocess_tag
@@ -44,7 +44,6 @@ class EnrolResult:
     support_phash_strs: tuple[str, ...]
     canvas_phash_str: str
     canvas_phash_strs: tuple[str, ...]
-    lbp_sketch: bytes
     updated_qr_png_bytes: bytes
     scan_count: int
 
@@ -99,8 +98,7 @@ def generate_qr_only(
     vendor_id: str | None,
     private_key_pem: bytes | None = None,
 ) -> GenerateResult:
-    placeholder_sketch = b"\x00" * 32
-    cbor_payload = sign_payload(product_id, vendor_id, placeholder_sketch, private_key_pem)
+    cbor_payload = sign_payload(product_id, vendor_id, private_key_pem=private_key_pem)
     qr_png_bytes = generate_qr(cbor_payload, product_id)
     return GenerateResult(product_id=product_id, qr_png_bytes=qr_png_bytes)
 
@@ -138,9 +136,7 @@ def enrol(
     combined_vector = (combined_vector / combined_norm).astype(np.float32)
     color_signature = np.mean(np.stack(color_signatures, axis=0), axis=0).astype(np.float32)
 
-    mean_lbp_vector = np.mean(np.stack(lbp_vectors, axis=0), axis=0).astype(np.float32)
-    lbp_sketch = compute_lbp_sketch(mean_lbp_vector)
-    cbor_payload = sign_payload(product_id, vendor_id, lbp_sketch, private_key_pem)
+    cbor_payload = sign_payload(product_id, vendor_id, private_key_pem=private_key_pem)
     updated_qr_png_bytes = generate_qr(cbor_payload, product_id)
 
     primary_phash_strs = tuple(item.primary_hash for item in region_hashes)
@@ -159,7 +155,6 @@ def enrol(
         support_phash_strs=support_phash_strs,
         canvas_phash_str=canvas_phash_strs[0],
         canvas_phash_strs=canvas_phash_strs,
-        lbp_sketch=lbp_sketch,
         updated_qr_png_bytes=updated_qr_png_bytes,
         scan_count=len(preprocessed_tags),
     )
