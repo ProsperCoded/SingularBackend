@@ -46,9 +46,15 @@ async def get_current_user(
             detail=f"Could not validate credentials: {str(e)}",
         )
 
-    statement = select(User).where(User.id == user_id)
-    result = await session.exec(statement)
-    user = result.first()
+    try:
+        statement = select(User).where(User.id == user_id)
+        result = await session.exec(statement)
+        user = result.first()
+    except Exception as db_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {type(db_err).__name__}: {str(db_err)}",
+        )
 
     if not user:
         raise HTTPException(
