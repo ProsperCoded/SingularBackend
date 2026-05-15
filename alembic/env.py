@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
 from core.database import _connect_args, _database_url
-import models.product  # noqa: F401
-import models.scan_event  # noqa: F401
-import models.user  # noqa: F401
+import models.product
+import models.scan_event
+import models.user
 
 
 config = context.config
@@ -37,7 +37,9 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, compare_type=True
+    )
 
     with context.begin_transaction():
         context.run_migrations()

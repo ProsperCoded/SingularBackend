@@ -12,12 +12,14 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.auth import get_current_user
+from core.config import settings
 from core.database import get_db_session
 from core.payment import verify_squad_transaction
 from core.payment import initiate_squad_transaction
 from models.product import Product
 from models.scan_event import ScanEvent
 from models.user import User, UserRole
+
 from schemas.scan import ProductDetails, ScanResultResponse
 from schemas.tags import (
     TagEnrolResponse,
@@ -53,12 +55,16 @@ def _resolve_product_id(raw_value: str) -> str:
 
     encoded_payload = parse_qs(parsed.query).get("data", [None])[0]
     if not encoded_payload:
-        raise HTTPException(status_code=400, detail="QR payload is missing its signed data block.")
+        raise HTTPException(
+            status_code=400, detail="QR payload is missing its signed data block."
+        )
 
     payload = cbor2.loads(base64.urlsafe_b64decode(encoded_payload.encode("ascii")))
     product_id = payload.get("pid")
     if not isinstance(product_id, str) or not product_id:
-        raise HTTPException(status_code=400, detail="QR payload does not contain a valid product id.")
+        raise HTTPException(
+            status_code=400, detail="QR payload does not contain a valid product id."
+        )
     return product_id
 
 
@@ -68,7 +74,9 @@ async def initiate_tag_payment(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != UserRole.BRAND:
-        raise HTTPException(status_code=403, detail="Only Brands can create tag payments.")
+        raise HTTPException(
+            status_code=403, detail="Only Brands can create tag payments."
+        )
 
     result = await initiate_squad_transaction(
         email=current_user.email,
@@ -82,16 +90,14 @@ async def initiate_tag_payment(
         },
     )
     return TagPaymentInitiateResponse(
-        **result,
-        email=current_user.email,
-        currency="NGN"
+        **result, email=current_user.email, currency="NGN"
     )
 
 
 @router.post("/generate", response_model=TagGenerateResponse)
 async def generate_tag(
-    transaction_ref: str = Form(...),
     product_type: str = Form(...),
+    transaction_ref: str | None = Form(default=None),
     vendor_id: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
@@ -99,7 +105,19 @@ async def generate_tag(
     if current_user.role != UserRole.BRAND:
         raise HTTPException(status_code=403, detail="Only Brands can generate tags.")
 
-    existing_tag_statement = select(Product).where(Product.transaction_ref == transaction_ref)
+    if not transaction_ref:
+        if settings.SKIP_PAYMENT_VERIFICATION:
+            transaction_ref = f"BYPASS_{uuid.uuid4().hex[:12]}"
+            print(f"Bypassing payment for tag generation: {transaction_ref}")
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="transaction_ref is required when payment verification is enabled.",
+            )
+
+    existing_tag_statement = select(Product).where(
+        Product.transaction_ref == transaction_ref
+    )
     existing_tag = (await session.exec(existing_tag_statement)).first()
     if existing_tag:
         raise HTTPException(
@@ -110,7 +128,9 @@ async def generate_tag(
     await verify_squad_transaction(transaction_ref, COST_PER_TAG_KOBO)
 
     product_id = uuid.uuid4().hex
-    generated_tag = await engine.generate_tag(product_id=product_id, vendor_id=vendor_id)
+    generated_tag = await engine.generate_tag(
+        product_id=product_id, vendor_id=vendor_id
+    )
 
     product = Product(
         id=product_id,
@@ -140,7 +160,9 @@ async def generate_tag(
 @router.post("/enrol", response_model=TagEnrolResponse)
 async def enrol_tag(
     product_id: str = Form(...),
-    images: list[UploadFile] = File(..., description="Exactly three enrolment scans of the same tag"),
+    images: list[UploadFile] = File(
+        ..., description="Exactly three enrolment scans of the same tag"
+    ),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -167,7 +189,9 @@ async def enrol_tag(
         required_scan_count=REQUIRED_ENROLMENT_SCANS,
     )
 
-    product.enrolment_bundle = serialize_enrolment_bundle(enrolment_result, vendor_id=product.vendor_id)
+    product.enrolment_bundle = serialize_enrolment_bundle(
+        enrolment_result, vendor_id=product.vendor_id
+    )
     product.qr_png_b64 = _encode_png_bytes(enrolment_result.updated_qr_png_bytes)
     product.enrolment_scan_count = enrolment_result.scan_count
     product.status = "enrolled"
@@ -198,7 +222,11 @@ async def list_tags(
     if current_user.role != UserRole.BRAND:
         raise HTTPException(status_code=403, detail="Only Brands can view tags.")
 
-    statement = select(Product).where(Product.brand_id == current_user.id).order_by(Product.created_at.desc())
+    statement = (
+        select(Product)
+        .where(Product.brand_id == current_user.id)
+        .order_by(Product.created_at.desc())
+    )
     results = await session.exec(statement)
     products = results.all()
 
@@ -224,7 +252,9 @@ async def list_tags(
 async def verify_tag(
     image: UploadFile = File(..., description="1200×1200px JPEG of the physical tag"),
     product_id: str = Form(..., description="Decoded product ID from the QR payload"),
-    device_hash: str | None = Form(default=None, description="Browser fingerprint for anonymous tracking"),
+    device_hash: str | None = Form(
+        default=None, description="Browser fingerprint for anonymous tracking"
+    ),
     session: AsyncSession = Depends(get_db_session),
 ):
     image_bytes = await image.read()
@@ -238,7 +268,11 @@ async def verify_tag(
             enrolment_bundle=product_record.enrolment_bundle,
         )
     else:
-        result = await engine.verify_tag(image_bytes=image_bytes, product_id=resolved_product_id, enrolment_bundle=None)
+        result = await engine.verify_tag(
+            image_bytes=image_bytes,
+            product_id=resolved_product_id,
+            enrolment_bundle=None,
+        )
 
     product_details = None
     vendor_trust = None

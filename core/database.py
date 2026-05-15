@@ -45,7 +45,18 @@ def _normalize_database_url(database_url: str) -> tuple[str, dict[str, object]]:
 
 
 _database_url, _connect_args = _normalize_database_url(settings.DATABASE_URL)
-async_engine = create_async_engine(_database_url, echo=True, connect_args=_connect_args)
+
+# asyncpg driver args must live in connect_args, not as engine-level kwargs.
+# Setting prepared_statement_cache_size=0 disables the prepared statement cache,
+# which is required when connecting through PGBouncer or DigitalOcean connection pooling.
+if _database_url.startswith("postgresql"):
+    _connect_args.setdefault("prepared_statement_cache_size", 0)
+
+async_engine = create_async_engine(
+    _database_url,
+    echo=True,
+    connect_args=_connect_args,
+)
 
 
 async def get_db_session() -> AsyncSession:
