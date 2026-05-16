@@ -1,12 +1,12 @@
-# PrintPUF Backend
+# Singular Backend
 
-PrintPUF is an anti-counterfeiting platform that utilizes Physical Unclonable Functions (PUFs) to authenticate physical products via smartphone cameras. It leverages computer vision techniques (LBP texture extraction, SIFT keypoints) and MobileNetV2 feature extraction to create unique, unclonable digital signatures for physical QR tags.
+Singular is an anti-counterfeiting platform that utilizes Physical Unclonable Functions (PUFs) to authenticate physical products via smartphone cameras. It leverages computer vision techniques (LBP texture extraction, SIFT keypoints) and MobileNetV2 feature extraction to create unique, unclonable digital signatures for physical QR tags.
 
 This repository houses the business logic API layer that sits between the frontend and the core engine.
 
 ## Architecture Overview
 
-The PrintPUF system is divided into three main components:
+The Singular system is divided into three main components:
 
 1. **The Core Engine**: Handles all computer vision, feature extraction, vector normalisation, AES-256 encryption, and pgvector cosine similarity queries.
 2. **The Backbone (API)**: Built with FastAPI and SQLModel. It handles routing, database schemas, analytics, trust score algorithms, vendor management, and backend-authenticated users.
@@ -79,9 +79,9 @@ The PrintPUF system is divided into three main components:
 Once the server is running, the interactive Swagger API documentation is available at:
 **http://127.0.0.1:8000/docs**
 
-# PrintPUF Engine
+# Singular Engine
 
-Functional engine for PrintPUF tag generation, enrolment, and verification. The engine is intentionally side-effect free: it accepts inputs, processes them, and returns structured results. Storage, APIs, and verdict logic live in the backend.
+Functional engine for Singular tag generation, enrolment, and verification. The engine is intentionally side-effect free: it accepts inputs, processes them, and returns structured results. Storage, APIs, and verdict logic live in the backend.
 
 ## Pipeline
 
