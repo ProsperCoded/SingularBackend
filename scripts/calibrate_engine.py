@@ -50,6 +50,17 @@ def _load_product_from_sqlite(db_path: Path, product_id: str) -> dict[str, Any]:
 
 def _load_product_from_json(json_path: Path, product_id: str | None) -> dict[str, Any]:
     payload = json.loads(json_path.read_text(encoding="utf-8"))
+    if isinstance(payload, dict) and isinstance(payload.get("product_id"), str) and "enrolment_bundle" not in payload:
+        bundle = payload
+        selected_product_id = str(bundle["product_id"])
+        if product_id is not None and product_id != selected_product_id:
+            raise ValueError(f"product_id {product_id!r} does not match bundle product_id {selected_product_id!r}")
+        return {
+            "id": selected_product_id,
+            "product_type": "bundle_only",
+            "vendor_id": bundle.get("vendor_id"),
+            "enrolment_bundle": bundle,
+        }
     if isinstance(payload, list):
         records = payload
     else:

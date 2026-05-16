@@ -43,6 +43,10 @@ CANVAS_PHASH_WEIGHT = 0.05
 SUPPORT_PHASH_WEIGHT = 0.05
 
 HALFTONE_SENSITIVITY = 2.5
+LOW_QUALITY_GENUINE_LBP_THRESHOLD = 0.940
+LOW_QUALITY_GENUINE_PRIMARY_PHASH = 20
+LOW_QUALITY_GENUINE_SUPPORT_PHASH = 28
+LOW_QUALITY_GENUINE_CANVAS_PHASH = 16
 
 
 @dataclass(frozen=True)
@@ -191,6 +195,8 @@ def _min_phash_distance(reference_hashes: Sequence[str], current_hash: str) -> i
     return min(compare_phash(reference_hash, current_hash) for reference_hash in reference_hashes)
 
 
+
+
 def _classify_structural_verdict(
     *,
     sample_vector_score: float,
@@ -198,9 +204,9 @@ def _classify_structural_verdict(
     support_distance: int,
     canvas_distance: int,
 ) -> str:
+    _ = sample_vector_score
     if (
-        sample_vector_score >= PASS_VECTOR_SIMILARITY
-        and primary_distance <= PASS_PRIMARY_PHASH_DISTANCE
+        primary_distance <= PASS_PRIMARY_PHASH_DISTANCE
         and support_distance <= PASS_SUPPORT_PHASH_DISTANCE
         and canvas_distance <= PASS_CANVAS_PHASH_DISTANCE
     ):
@@ -208,7 +214,6 @@ def _classify_structural_verdict(
 
     suspicious_signals = sum(
         (
-            sample_vector_score >= SUSPICIOUS_VECTOR_SIMILARITY,
             primary_distance <= SUSPICIOUS_PRIMARY_PHASH_DISTANCE,
             support_distance <= SUSPICIOUS_SUPPORT_PHASH_DISTANCE,
             canvas_distance <= SUSPICIOUS_CANVAS_PHASH_DISTANCE,
@@ -312,6 +317,37 @@ def _merge_verdicts(
     if merged == "pass" and color_verdict == "fail":
         return "suspicious"
     return merged
+
+
+def _should_treat_as_low_quality_genuine(
+    *,
+    texture_verdict: str,
+    texture_reasons: Sequence[str],
+    structural_verdict: str,
+    lbp_score: float,
+    primary_distance: int,
+    support_distance: int,
+    canvas_distance: int,
+    color_verdict: str,
+    color_distance: float,
+) -> bool:
+    if texture_verdict != "fail":
+        return False
+    if tuple(texture_reasons) != ("sharpness_drop",):
+        return False
+    if structural_verdict == "fail":
+        return False
+    if lbp_score < LOW_QUALITY_GENUINE_LBP_THRESHOLD:
+        return False
+    if primary_distance > LOW_QUALITY_GENUINE_PRIMARY_PHASH:
+        return False
+    if support_distance > LOW_QUALITY_GENUINE_SUPPORT_PHASH:
+        return False
+    if canvas_distance > LOW_QUALITY_GENUINE_CANVAS_PHASH:
+        return False
+    if color_verdict == "fail" and np.isfinite(color_distance):
+        return False
+    return True
 
 
 def _verdict_from_score(score: float) -> str:
@@ -454,6 +490,20 @@ def verify_enrolment_bundle(
         support_distance=support_distance,
         canvas_distance=canvas_distance,
     )
+    if _should_treat_as_low_quality_genuine(
+        texture_verdict=texture_verdict,
+        texture_reasons=texture_reasons,
+        structural_verdict=structural_verdict,
+        lbp_score=lbp_score,
+        primary_distance=primary_distance,
+        support_distance=support_distance,
+        canvas_distance=canvas_distance,
+        color_verdict=color_verdict,
+        color_distance=color_distance,
+    ):
+        texture_verdict = "suspicious"
+        verdict_reasons = [reason for reason in verdict_reasons if reason != "sharpness_drop"]
+        verdict_reasons.append("low_quality_genuine")
     verdict = _merge_verdicts(
         structural_verdict=structural_verdict,
         texture_verdict=texture_verdict,
@@ -509,6 +559,10 @@ def verify_enrolment_bundle(
             "canvas_phash_weight": CANVAS_PHASH_WEIGHT,
             "support_phash_weight": SUPPORT_PHASH_WEIGHT,
             "halftone_sensitivity": HALFTONE_SENSITIVITY,
+            "low_quality_genuine_lbp_threshold": LOW_QUALITY_GENUINE_LBP_THRESHOLD,
+            "low_quality_genuine_primary_phash": LOW_QUALITY_GENUINE_PRIMARY_PHASH,
+            "low_quality_genuine_support_phash": LOW_QUALITY_GENUINE_SUPPORT_PHASH,
+            "low_quality_genuine_canvas_phash": LOW_QUALITY_GENUINE_CANVAS_PHASH,
             "primary_phash_distance": PASS_PRIMARY_PHASH_DISTANCE,
             "suspicious_primary_phash_distance": SUSPICIOUS_PRIMARY_PHASH_DISTANCE,
             "canvas_phash_distance": PASS_CANVAS_PHASH_DISTANCE,

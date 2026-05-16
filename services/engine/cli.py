@@ -68,6 +68,8 @@ def _save_enrolment_bundle(
     vendor_id: str | None,
     lbp_vector: np.ndarray,
     lbp_vectors: tuple[np.ndarray, ...],
+    sharpness_score: float,
+    sharpness_scores: tuple[float, ...],
     combined_vector: np.ndarray,
     combined_vectors: tuple[np.ndarray, ...],
     halftone_mean_score: float,
@@ -90,14 +92,17 @@ def _save_enrolment_bundle(
     for index, tag in enumerate(preprocessed_tags, start=1):
         _save_image_array(tag.canvas, f"scan_{index}_canvas.png", output_dir=output_dir)
         _save_image_array(tag.primary_region, f"scan_{index}_primary_region.png", output_dir=output_dir)
+        _save_image_array(tag.texture_region, f"scan_{index}_texture_region.png", output_dir=output_dir)
         _save_image_array(tag.support_region, f"scan_{index}_support_region.png", output_dir=output_dir)
 
-        bundle = {
+    bundle = {
         **serialize_enrolment_bundle(
             EnrolResult(
                 product_id=product_id,
                 lbp_vector=lbp_vector,
                 lbp_vectors=lbp_vectors,
+                sharpness_score=sharpness_score,
+                sharpness_scores=sharpness_scores,
                 combined_vector=combined_vector,
                 combined_vectors=combined_vectors,
                 halftone_mean_score=halftone_mean_score,
@@ -122,6 +127,7 @@ def _save_enrolment_bundle(
                 {
                     "canvas_png": f"scan_{index}_canvas.png",
                     "primary_region_png": f"scan_{index}_primary_region.png",
+                    "texture_region_png": f"scan_{index}_texture_region.png",
                     "support_region_png": f"scan_{index}_support_region.png",
                 }
                 for index in range(1, scan_count + 1)
@@ -162,6 +168,8 @@ def _cmd_enrol(args: argparse.Namespace) -> int:
         vendor_id=args.vendor_id,
         lbp_vector=result.lbp_vector,
         lbp_vectors=result.lbp_vectors,
+        sharpness_score=result.sharpness_score,
+        sharpness_scores=result.sharpness_scores,
         combined_vector=result.combined_vector,
         combined_vectors=result.combined_vectors,
         halftone_mean_score=result.halftone_mean_score,
@@ -247,3 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         return int(args.func(args))
     except (ImageQualityError, LocalizationError, ValueError) as exc:
         parser.exit(1, f"error: {exc}\n")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
