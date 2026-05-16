@@ -17,8 +17,8 @@ from .preprocessor import decode_qr_payload_bytes
 from .vector import cosine_similarity
 
 
-PASS_VECTOR_SIMILARITY = 0.970
-SUSPICIOUS_VECTOR_SIMILARITY = 0.650
+PASS_VECTOR_SIMILARITY = 0.975
+SUSPICIOUS_VECTOR_SIMILARITY = 0.960
 PASS_PRIMARY_PHASH_DISTANCE = 12
 SUSPICIOUS_PRIMARY_PHASH_DISTANCE = 22
 PASS_CANVAS_PHASH_DISTANCE = 16
@@ -277,8 +277,8 @@ def _color_thresholds(bundle: Mapping[str, object]) -> tuple[float, float]:
     else:
         baseline = 0.0
 
-    pass_threshold = max(0.22, baseline * 1.75)
-    suspicious_threshold = max(0.38, baseline * 2.75)
+    pass_threshold = min(max(0.22, baseline * 1.75), 0.35)
+    suspicious_threshold = min(max(0.38, baseline * 2.75), 0.75)
     return pass_threshold, suspicious_threshold
 
 
@@ -311,6 +311,8 @@ def _merge_verdicts(
     merged = texture_verdict if severity[texture_verdict] >= severity[structural_verdict] else structural_verdict
     if merged == "pass" and color_verdict == "fail":
         return "suspicious"
+    if merged == "suspicious" and color_verdict == "pass":
+        return "pass"
     return merged
 
 
