@@ -125,9 +125,10 @@ async def verify_squad_transaction(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(url, headers=headers)
+            data = response.json()
+            print("response", response, data)
             response.raise_for_status()  # Raises an error for 4xx/5xx responses
 
-            data = response.json()
             transaction_data = data.get("data", {})
             print(
                 "Squad transaction verification result "

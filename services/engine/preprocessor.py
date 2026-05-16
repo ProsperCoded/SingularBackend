@@ -13,8 +13,8 @@ from .layout import ARUCO_MARKER_IDS, Rect, TagLayout, build_tag_layout, infer_t
 
 
 _DETECTED_QR_TO_PANEL_SCALE = 1.2
-_PRIMARY_MIN_LAPLACIAN_VARIANCE = 300.0
-_PRIMARY_MIN_CONTRAST_STD = 20.0
+_PRIMARY_MIN_LAPLACIAN_VARIANCE = 180.0
+_PRIMARY_MIN_CONTRAST_STD = 16.0
 _CANVAS_MIN_MEAN_INTENSITY = 30.0
 _CANVAS_MAX_MEAN_INTENSITY = 235.0
 _MIN_QR_SIDE_LENGTH_PX = 120.0
@@ -53,6 +53,7 @@ class TagQuality:
 class PreprocessedTag:
     canvas: np.ndarray
     primary_region: np.ndarray
+    texture_region: np.ndarray
     support_region: np.ndarray
     payload_uri: str | None
     alignment_method: str
@@ -166,8 +167,15 @@ def _detect_with_wechat(image: np.ndarray) -> QRDetection | None:
 
 def _detect_with_opencv(image: np.ndarray) -> QRDetection | None:
     detector = _build_qr_detector()
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    enhanced_grayscale = clahe.apply(grayscale)
 
-    for candidate_name, candidate in (("opencv_qrcode", image), ("opencv_qrcode_gray", cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))):
+    for candidate_name, candidate in (
+        ("opencv_qrcode", image),
+        ("opencv_qrcode_gray", grayscale),
+        ("opencv_qrcode_gray_clahe", enhanced_grayscale),
+    ):
         payload, points, _ = detector.detectAndDecode(candidate)
         normalized = _normalize_detection_points(points)
         if normalized is not None:
@@ -406,6 +414,29 @@ def _resize_square(image: np.ndarray, size: int) -> np.ndarray:
     return cv2.resize(image, (size, size), interpolation=cv2.INTER_AREA)
 
 
+def _resize_texture_square(image: np.ndarray, size: int) -> np.ndarray:
+    return cv2.resize(image, (size, size), interpolation=cv2.INTER_CUBIC)
+
+
+def _global_intensity_normalize(image: np.ndarray, target_mean: float = 127.0) -> np.ndarray:
+    source = image.astype(np.float32)
+    mean_intensity = float(source.mean())
+    if mean_intensity <= 1e-6:
+        return np.ascontiguousarray(image, dtype=np.uint8)
+
+    scaling_factor = target_mean / mean_intensity
+    normalized = np.clip(source * scaling_factor, 0.0, 255.0).astype(np.uint8)
+    return np.ascontiguousarray(normalized, dtype=np.uint8)
+
+
+def compute_sharpness_score(image_array: np.ndarray) -> float:
+    if not isinstance(image_array, np.ndarray):
+        raise TypeError("image_array must be a numpy array")
+    if image_array.ndim != 2:
+        raise ValueError("image_array must be a 2D grayscale array")
+    return float(cv2.Laplacian(image_array, cv2.CV_64F).var())
+
+
 def _support_column_rect(layout: TagLayout) -> Rect:
     top = layout.red_fragment.y
     bottom = layout.blue_fragment.y + layout.blue_fragment.height
@@ -419,15 +450,15 @@ def _support_column_rect(layout: TagLayout) -> Rect:
 
 def _compute_quality(
     *,
-    primary_region: np.ndarray,
+    texture_region: np.ndarray,
     canvas: np.ndarray,
     detection: QRDetection,
     aruco_marker_count: int,
     ecc_correlation: float | None,
 ) -> TagQuality:
     return TagQuality(
-        primary_laplacian_variance=float(cv2.Laplacian(primary_region, cv2.CV_64F).var()),
-        primary_contrast_std=float(primary_region.std()),
+        primary_laplacian_variance=compute_sharpness_score(texture_region),
+        primary_contrast_std=float(texture_region.std()),
         canvas_mean_intensity=float(canvas.mean()),
         qr_side_length_px=detection.qr_side_length_px,
         aruco_marker_count=aruco_marker_count,
@@ -506,7 +537,11 @@ def _preprocess_detected_tag(
     canvas = np.ascontiguousarray(grayscale, dtype=np.uint8)
 
     inferred_layout = infer_tag_layout(canvas.shape[1], canvas.shape[0])
-    primary_region = _resize_square(_crop_rect(canvas, inferred_layout.qr_panel), anchor_size)
+    raw_primary_region = _crop_rect(canvas, inferred_layout.content_rect)
+    primary_region = _resize_square(raw_primary_region, anchor_size)
+    texture_region = _global_intensity_normalize(
+        _resize_texture_square(raw_primary_region, anchor_size)
+    )
     support_region = _resize_square(_crop_rect(canvas, _support_column_rect(inferred_layout)), anchor_size)
 
     if apply_clahe:
@@ -514,9 +549,10 @@ def _preprocess_detected_tag(
         primary_region = clahe.apply(primary_region)
 
     primary_region = np.ascontiguousarray(primary_region, dtype=np.uint8)
+    texture_region = np.ascontiguousarray(texture_region, dtype=np.uint8)
     support_region = np.ascontiguousarray(support_region, dtype=np.uint8)
     quality = _compute_quality(
-        primary_region=primary_region,
+        texture_region=texture_region,
         canvas=canvas,
         detection=detection,
         aruco_marker_count=aruco_marker_count,
@@ -533,6 +569,7 @@ def _preprocess_detected_tag(
     return PreprocessedTag(
         canvas=canvas,
         primary_region=primary_region,
+        texture_region=texture_region,
         support_region=support_region,
         payload_uri=payload_uri,
         alignment_method=alignment_method,

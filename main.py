@@ -7,7 +7,6 @@ from api.vendors import router as vendors_router
 from api.tags import router as tags_router
 from api.verify import router as verify_router
 from api.analytics import router as analytics_router
-from core.config import settings
 from core.database import async_engine
 from core.schema import ensure_schema
 
@@ -18,10 +17,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://singular-frontend-beta.vercel.app", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],
+    allow_methods=["POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -40,8 +38,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def on_startup():
-    if settings.SYNC_DATABASE:
-        await ensure_schema(async_engine)
+    await ensure_schema(async_engine)
 
 
 api_router = APIRouter(prefix="/api")

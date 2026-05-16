@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     PRINTPUF_ED25519_PUBLIC_KEY_PEM: str | None = None
     PRINTPUF_PRIVATE_KEY_PEM: str | None = None
     PRINTPUF_PUBLIC_KEY_PEM: str | None = None
+    PRINTPUF_SCORE_CALIBRATOR_PATH: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

@@ -66,8 +66,13 @@ def _save_enrolment_bundle(
     output_dir: Path,
     product_id: str,
     vendor_id: str | None,
+    lbp_vector: np.ndarray,
+    lbp_vectors: tuple[np.ndarray, ...],
     combined_vector: np.ndarray,
     combined_vectors: tuple[np.ndarray, ...],
+    halftone_mean_score: float,
+    halftone_max_score: float,
+    color_signature_version: str,
     color_signature: np.ndarray,
     color_signatures: tuple[np.ndarray, ...],
     primary_phash_str: str,
@@ -87,12 +92,17 @@ def _save_enrolment_bundle(
         _save_image_array(tag.primary_region, f"scan_{index}_primary_region.png", output_dir=output_dir)
         _save_image_array(tag.support_region, f"scan_{index}_support_region.png", output_dir=output_dir)
 
-    bundle = {
+        bundle = {
         **serialize_enrolment_bundle(
             EnrolResult(
                 product_id=product_id,
+                lbp_vector=lbp_vector,
+                lbp_vectors=lbp_vectors,
                 combined_vector=combined_vector,
                 combined_vectors=combined_vectors,
+                halftone_mean_score=halftone_mean_score,
+                halftone_max_score=halftone_max_score,
+                color_signature_version=color_signature_version,
                 color_signature=color_signature,
                 color_signatures=color_signatures,
                 primary_phash_str=primary_phash_str,
@@ -150,8 +160,13 @@ def _cmd_enrol(args: argparse.Namespace) -> int:
         output_dir=output_dir,
         product_id=result.product_id,
         vendor_id=args.vendor_id,
+        lbp_vector=result.lbp_vector,
+        lbp_vectors=result.lbp_vectors,
         combined_vector=result.combined_vector,
         combined_vectors=result.combined_vectors,
+        halftone_mean_score=result.halftone_mean_score,
+        halftone_max_score=result.halftone_max_score,
+        color_signature_version=result.color_signature_version,
         color_signature=result.color_signature,
         color_signatures=result.color_signatures,
         primary_phash_str=result.primary_phash_str,

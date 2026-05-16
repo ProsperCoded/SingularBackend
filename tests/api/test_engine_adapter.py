@@ -42,13 +42,31 @@ def test_adapter_verify_maps_engine_verdict_to_backend(monkeypatch: pytest.Monke
     adapter = PrintPUFEngineAdapter()
 
     def _fake_verify_enrolment_bundle(bundle_source, image_source):
-        return SimpleNamespace(verdict="pass", vector_score=0.97)
+        return SimpleNamespace(
+            verdict="pass",
+            composite_score=97.0,
+            score_source="rule_based",
+            lbp_score=0.91,
+            vector_score=0.97,
+            mean_vector_score=0.95,
+            enrolled_halftone_mean=12.0,
+            enrolled_halftone_max=14.0,
+            query_halftone_mean=12.5,
+            query_halftone_max=14.5,
+            primary_phash_distance=8,
+            support_phash_distance=12,
+            canvas_phash_distance=14,
+            color_distance=0.2,
+            structural_verdict="pass",
+            color_verdict="pass",
+            verdict_reasons=[],
+            thresholds={},
+        )
 
     monkeypatch.setattr("services.engine_adapter.verify_enrolment_bundle", _fake_verify_enrolment_bundle)
 
     result = asyncio.run(adapter.verify_tag(b"image-bytes", "product-1", {"product_id": "product-1"}))
 
     assert isinstance(result, VerificationResult)
-    assert result.score == 0.97
+    assert result.score == 97.0
     assert result.verdict == "AUTHENTIC"
-

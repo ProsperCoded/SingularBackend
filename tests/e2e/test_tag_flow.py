@@ -33,7 +33,28 @@ def test_tag_generate_list_and_verify_flow(client, brand_token: str, monkeypatch
         return SimpleNamespace(product_id=product_id, qr_png_bytes=b"qr-bytes")
 
     async def _fake_verify_tag(*, image_bytes: bytes, product_id: str, enrolment_bundle=None):
-        return VerificationResult(score=0.91, verdict="AUTHENTIC")
+        return VerificationResult(
+            score=0.91,
+            verdict="AUTHENTIC",
+            details={
+                "composite_score": 91.0,
+                "lbp_similarity": 0.91,
+                "vector_similarity": 0.91,
+                "mean_vector_similarity": 0.90,
+                "enrolled_halftone_mean": 12.0,
+                "enrolled_halftone_max": 14.0,
+                "query_halftone_mean": 12.5,
+                "query_halftone_max": 14.5,
+                "primary_phash_distance": 8,
+                "support_phash_distance": 12,
+                "canvas_phash_distance": 14,
+                "color_distance": 0.2,
+                "structural_verdict": "pass",
+                "color_verdict": "pass",
+                "verdict_reasons": [],
+                "thresholds": {},
+            },
+        )
 
     monkeypatch.setattr(tags_module, "verify_squad_transaction", _fake_verify_transaction)
     monkeypatch.setattr(tags_module.engine, "generate_tag", _fake_generate_tag)

@@ -1,7 +1,9 @@
 """PrintPUF engine package."""
 
+from .calibration import CalibrationFeatures, compute_calibrated_score, load_score_calibrator
 from .color_features import compare_color_signatures, extract_color_signature
 from .generator import generate_qr
+from .halftone import HalftoneResult, is_photocopy, score_patch, score_patches
 from .lbp import extract_lbp
 from .phash import (
     PHASH_THRESHOLD,
@@ -31,6 +33,7 @@ __all__ = [
     "EnrolResult",
     "FeatureResult",
     "GenerateResult",
+    "HalftoneResult",
     "ImageQualityError",
     "LocalizationError",
     "PHASH_THRESHOLD",
@@ -38,7 +41,9 @@ __all__ = [
     "RegionPHash",
     "SUPPORT_PHASH_THRESHOLD",
     "TagQuality",
+    "CalibrationFeatures",
     "build_vector",
+    "compute_calibrated_score",
     "compare_color_signatures",
     "compare_phash",
     "compute_phash",
@@ -54,8 +59,12 @@ __all__ = [
     "extract_sift",
     "generate_qr",
     "generate_qr_only",
+    "is_photocopy",
+    "load_score_calibrator",
     "preprocess",
     "preprocess_tag",
+    "score_patch",
+    "score_patches",
     "sign_payload",
     "verify_payload",
 ]

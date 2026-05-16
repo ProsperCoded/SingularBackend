@@ -13,6 +13,7 @@ class VerificationResult(BaseModel):
 
     score: float
     verdict: str  # Must be one of: "AUTHENTIC", "SUSPICIOUS", "FAKE"
+    details: dict[str, object] | None = None
 
 
 class PUFEngineInterface(ABC):
@@ -75,6 +76,6 @@ class PUFEngineInterface(ABC):
             enrolment_bundle: The persisted bundle for this tag, if available.
 
         Returns:
-            A VerificationResult containing the cosine similarity score and the final backend verdict.
+            A VerificationResult containing the composite verification score and the final backend verdict.
         """
         pass

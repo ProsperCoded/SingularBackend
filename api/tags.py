@@ -21,7 +21,7 @@ from models.product import Product
 from models.scan_event import ScanEvent
 from models.user import User, UserRole
 
-from schemas.scan import ProductDetails, ScanResultResponse
+from schemas.scan import ProductDetails, ScanResultResponse, VerificationDetailsResponse
 from schemas.tags import (
     TagEnrolResponse,
     TagGenerateResponse,
@@ -407,10 +407,16 @@ async def verify_tag(
     session.add(scan_event)
     await session.commit()
 
+    print(
+        "[verify] product_id=%s verdict=%s score=%s details=%s"
+        % (resolved_product_id, result.verdict, result.score, result.details)
+    )
+
     return ScanResultResponse(
         product_id=resolved_product_id,
         verdict=result.verdict,
         score=result.score,
+        verification=VerificationDetailsResponse(**(result.details or {})),
         product=product_details,
         vendor=vendor_trust,
         report_url=report_url,

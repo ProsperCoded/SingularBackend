@@ -299,7 +299,28 @@ def test_verify_tag_returns_backend_verdicts(monkeypatch: pytest.MonkeyPatch, ba
     )
 
     async def _fake_verify_tag(*, image_bytes: bytes, product_id: str, enrolment_bundle=None):
-        return VerificationResult(score=0.91, verdict=backend_verdict)
+        return VerificationResult(
+            score=0.91,
+            verdict=backend_verdict,
+            details={
+                "composite_score": 91.0,
+                "lbp_similarity": 0.91,
+                "vector_similarity": 0.91,
+                "mean_vector_similarity": 0.90,
+                "enrolled_halftone_mean": 12.0,
+                "enrolled_halftone_max": 14.0,
+                "query_halftone_mean": 12.5,
+                "query_halftone_max": 14.5,
+                "primary_phash_distance": 8,
+                "support_phash_distance": 12,
+                "canvas_phash_distance": 14,
+                "color_distance": 0.2,
+                "structural_verdict": "pass",
+                "color_verdict": "pass",
+                "verdict_reasons": [],
+                "thresholds": {},
+            },
+        )
 
     monkeypatch.setattr(tags_module.engine, "verify_tag", _fake_verify_tag)
 
@@ -317,6 +338,7 @@ def test_verify_tag_returns_backend_verdicts(monkeypatch: pytest.MonkeyPatch, ba
     assert body["score"] == 0.91
     assert body["report_url"] == report_url
     assert body["product"]["product_name"] == "product-1"
+    assert body["verification"]["lbp_similarity"] == 0.91
     assert session.commits == 1
 
 

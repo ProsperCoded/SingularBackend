@@ -18,7 +18,7 @@ class ScanEvent(SQLModel, table=True):
         default=None, index=True, description="Resolved from Product record"
     )
     verdict: str = Field(description="AUTHENTIC, SUSPICIOUS, or FAKE")
-    score: float = Field(description="Cosine similarity score from the engine")
+    score: float = Field(description="Composite verification score from the engine")
     device_hash: str | None = Field(
         default=None, description="Browser fingerprint for anonymous tracking"
     )

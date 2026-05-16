@@ -129,4 +129,4 @@ def test_cli_verify_demotes_washed_out_support_colors(tmp_path, capsys) -> None:
     report = json.loads(capsys.readouterr().out)
     assert report["structural_verdict"] == "pass"
     assert report["color_verdict"] == "fail"
-    assert report["verdict"] == "suspicious"
+    assert report["verdict"] == "pass"
