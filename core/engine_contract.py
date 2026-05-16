@@ -13,6 +13,7 @@ class VerificationResult(BaseModel):
 
     score: float
     verdict: str  # Must be one of: "AUTHENTIC", "SUSPICIOUS", "FAKE"
+    verification_details: dict | None = None
 
 
 class PUFEngineInterface(ABC):

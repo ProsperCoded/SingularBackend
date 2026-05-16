@@ -410,7 +410,8 @@ async def verify_tag(
     return ScanResultResponse(
         product_id=resolved_product_id,
         verdict=result.verdict,
-        score=result.score,
+        score=result.score * 100.0,
+        verification=result.verification_details,
         product=product_details,
         vendor=vendor_trust,
         report_url=report_url,

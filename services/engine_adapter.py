@@ -35,6 +35,18 @@ class PrintPUFEngineAdapter(PUFEngineInterface):
         return VerificationResult(
             score=summary.vector_score,
             verdict=map_engine_verdict_to_backend(summary.verdict),
+            verification_details={
+                "composite_score": summary.vector_score * 100,
+                "score_source": "rule_based",
+                "vector_similarity": summary.vector_score,
+                "mean_vector_similarity": summary.mean_vector_score,
+                "primary_phash_distance": summary.primary_phash_distance,
+                "support_phash_distance": summary.support_phash_distance,
+                "canvas_phash_distance": summary.canvas_phash_distance,
+                "color_distance": summary.color_distance,
+                "structural_verdict": summary.structural_verdict,
+                "color_verdict": summary.color_verdict,
+            }
         )
 
 
