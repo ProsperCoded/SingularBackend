@@ -15,8 +15,8 @@ from .pipeline import EnrolResult, FeatureResult, ImageSource, extract_features
 from .vector import cosine_similarity
 
 
-PASS_VECTOR_SIMILARITY = 0.990
-SUSPICIOUS_VECTOR_SIMILARITY = 0.985
+PASS_VECTOR_SIMILARITY = 0.975
+SUSPICIOUS_VECTOR_SIMILARITY = 0.960
 SUSPICIOUS_PRIMARY_PHASH_DISTANCE = 14
 SUSPICIOUS_CANVAS_PHASH_DISTANCE = 18
 
@@ -110,21 +110,19 @@ def _classify_structural_verdict(
 ) -> str:
     if sample_vector_score >= PASS_VECTOR_SIMILARITY and primary_distance <= PHASH_THRESHOLD:
         return "pass"
-    if (
-        sample_vector_score >= SUSPICIOUS_VECTOR_SIMILARITY
-        or primary_distance <= SUSPICIOUS_PRIMARY_PHASH_DISTANCE
+    if sample_vector_score >= SUSPICIOUS_VECTOR_SIMILARITY and (
+        primary_distance <= SUSPICIOUS_PRIMARY_PHASH_DISTANCE
+        or support_distance <= SUPPORT_PHASH_THRESHOLD
         or canvas_distance <= SUSPICIOUS_CANVAS_PHASH_DISTANCE
     ):
-        return "suspicious"
-    if support_distance <= SUPPORT_PHASH_THRESHOLD and sample_vector_score >= SUSPICIOUS_VECTOR_SIMILARITY:
         return "suspicious"
     return "fail"
 
 
 def _color_thresholds(bundle: Mapping[str, object]) -> tuple[float, float]:
     baseline = max(compare_color_signatures(signature, bundle["color_signature"]) for signature in bundle["color_signatures"])
-    pass_threshold = max(0.08, baseline * 2.0)
-    suspicious_threshold = max(0.12, baseline * 3.0)
+    pass_threshold = min(max(0.08, baseline * 2.0), 0.15)
+    suspicious_threshold = min(max(0.12, baseline * 3.0), 0.20)
     return pass_threshold, suspicious_threshold
 
 
@@ -150,7 +148,7 @@ def _merge_verdicts(
     if structural_verdict == "pass" and color_verdict == "fail":
         return "suspicious"
     if structural_verdict == "suspicious" and color_verdict == "pass":
-        if sample_vector_score >= PASS_VECTOR_SIMILARITY and primary_distance <= SUSPICIOUS_PRIMARY_PHASH_DISTANCE:
+        if sample_vector_score >= SUSPICIOUS_VECTOR_SIMILARITY and primary_distance <= SUSPICIOUS_PRIMARY_PHASH_DISTANCE:
             return "pass"
     if structural_verdict == "suspicious" and color_verdict == "fail":
         return "fail"
