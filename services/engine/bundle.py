@@ -121,8 +121,8 @@ def _classify_structural_verdict(
 
 def _color_thresholds(bundle: Mapping[str, object]) -> tuple[float, float]:
     baseline = max(compare_color_signatures(signature, bundle["color_signature"]) for signature in bundle["color_signatures"])
-    pass_threshold = min(max(0.08, baseline * 2.0), 0.15)
-    suspicious_threshold = min(max(0.12, baseline * 3.0), 0.20)
+    pass_threshold = min(max(0.15, baseline * 2.0), 0.35)
+    suspicious_threshold = min(max(0.25, baseline * 3.0), 0.75)
     return pass_threshold, suspicious_threshold
 
 
@@ -151,7 +151,9 @@ def _merge_verdicts(
         if sample_vector_score >= SUSPICIOUS_VECTOR_SIMILARITY and primary_distance <= SUSPICIOUS_PRIMARY_PHASH_DISTANCE:
             return "pass"
     if structural_verdict == "suspicious" and color_verdict == "fail":
-        return "fail"
+        # Do not let color alone drag a structurally viable tag into a "FAKE" state.
+        # It remains "suspicious".
+        return "suspicious"
     return structural_verdict
 
 
